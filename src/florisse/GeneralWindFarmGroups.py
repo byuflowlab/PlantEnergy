@@ -1,13 +1,55 @@
 import numpy as np
 
-from openmdao.api import Group, IndepVarComp, ParallelGroup
+from openmdao.api import Group, IndepVarComp, ParallelGroup, PetscKSP, ScipyGMRES, NLGaussSeidel
 
-from GeneralWindFarmComponents import AdjustCtCpYaw, MUX, WindFarmAEP, DeMUX, \
-    WindDirectionPower, add_gen_params_IdepVarComps
+from floris import Floris, add_floris_params_IndepVarComps
 
-from floris import add_model_params_IndepVarComps, RotorSolveGroup, FlorisGroup
+from GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, MUX, WindFarmAEP, DeMUX, \
+    CPCT_Interpolate_Gradients_Smooth, WindDirectionPower, add_gen_params_IdepVarComps, \
+    CPCT_Interpolate_Gradients
 
-# TODO make this group general
+
+class RotorSolveGroup(Group):
+
+    def __init__(self, nTurbines, direction_id=0, datasize=0, differentiable=True,
+                 use_rotor_components=False, nSamples=0, model=Floris,
+                 model_options=None):
+
+        super(RotorSolveGroup, self).__init__()
+
+        if model_options is None:
+            model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+                             'nSamples': nSamples}
+
+        from openmdao.core.mpi_wrap import MPI
+
+        # set up iterative solvers
+        epsilon = 1E-6
+        if MPI:
+            self.ln_solver = PetscKSP()
+        else:
+            self.ln_solver = ScipyGMRES()
+        self.nl_solver = NLGaussSeidel()
+        self.ln_solver.options['atol'] = epsilon
+
+        self.add('CtCp', CPCT_Interpolate_Gradients_Smooth(nTurbines, direction_id=direction_id, datasize=datasize),
+                 promotes=['gen_params:*', 'yaw%i' % direction_id,
+                           'wtVelocity%i' % direction_id, 'Cp_out'])
+
+        self.add('floris', Floris(nTurbines, direction_id=direction_id, model_options=model_options),
+                 promotes=(['model_params:*', 'wind_speed', 'axialInduction',
+                            'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
+                            'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
+                            'wakeOverlapTRel']
+                           if (nSamples == 0) else
+                           ['model_params:*', 'wind_speed', 'axialInduction',
+                            'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
+                            'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
+                            'wakeOverlapTRel', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                            'wsArray%i' % direction_id]))
+        self.connect('CtCp.Ct_out', 'floris.Ct')
+
+
 class DirectionGroup(Group):
     """
     Group containing all necessary components for wind plant calculations
@@ -15,42 +57,45 @@ class DirectionGroup(Group):
     """
 
     def __init__(self, nTurbines, direction_id=0, use_rotor_components=False, datasize=0,
-                 differentiable=True, add_IdepVarComps=True, nSamples=0):
+                 differentiable=True, add_IdepVarComps=True, nSamples=0, model=Floris,
+                 model_options=None):
         super(DirectionGroup, self).__init__()
 
         if add_IdepVarComps:
-            add_model_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
+            add_floris_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
             add_gen_params_IdepVarComps(self, datasize=datasize)
 
-        #TODO not general enough
+
+        self.add('directionConversion', WindFrame(nTurbines, differentiable=differentiable, nSamples=nSamples),
+                 promotes=['*'])
+
         if use_rotor_components:
-            self.add('myFloris', RotorSolveGroup(nTurbines, direction_id=direction_id,
+            self.add('rotorGroup', RotorSolveGroup(nTurbines, direction_id=direction_id,
                                                  datasize=datasize, differentiable=differentiable,
-                                                 nSamples=nSamples, use_rotor_components=use_rotor_components),
+                                                 nSamples=nSamples, use_rotor_components=use_rotor_components,
+                                                 model=Floris, model_options=model_options),
                      promotes=(['gen_params:*', 'yaw%i' % direction_id, 'wtVelocity%i' % direction_id,
-                                'model_params:*', 'wind_speed', 'wind_direction', 'axialInduction',
-                                'turbineX', 'turbineY', 'rotorDiameter', 'hubHeight', 'wakeCentersYT', 'wakeDiametersT',
+                                'model_params:*', 'wind_speed', 'axialInduction',
+                                'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight', 'wakeCentersYT', 'wakeDiametersT',
                                 'wakeOverlapTRel']
                                if (nSamples == 0) else
                                ['gen_params:*', 'yaw%i' % direction_id, 'wtVelocity%i' % direction_id,
-                                'model_params:*', 'wind_speed', 'wind_direction', 'axialInduction',
-                                'turbineX', 'turbineY', 'rotorDiameter', 'hubHeight', 'wakeCentersYT', 'wakeDiametersT',
+                                'model_params:*', 'wind_speed', 'axialInduction',
+                                'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight', 'wakeCentersYT', 'wakeDiametersT',
                                 'wakeOverlapTRel', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                 'wsArray%i' % direction_id]))
         else:
             self.add('CtCp', AdjustCtCpYaw(nTurbines, direction_id, differentiable),
                      promotes=['Ct_in', 'Cp_in', 'gen_params:*', 'yaw%i' % direction_id])
 
-            self.add('myFloris', FlorisGroup(nTurbines, direction_id=direction_id,
-                                             differentiable=differentiable, use_rotor_components=use_rotor_components,
-                                             nSamples=nSamples),
-                     promotes=(['model_params:*', 'wind_speed', 'wind_direction', 'axialInduction',
-                                'turbineX', 'turbineY', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
+            self.add('myModel', model(nTurbines, direction_id=direction_id, model_options=model_options),
+                     promotes=(['model_params:*', 'wind_speed', 'axialInduction',
+                                'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
                                 'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
                                 'wakeOverlapTRel']
                                if (nSamples == 0) else
-                               ['model_params:*', 'wind_speed', 'wind_direction', 'axialInduction',
-                                'turbineX', 'turbineY', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
+                               ['model_params:*', 'wind_speed', 'axialInduction',
+                                'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
                                 'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
                                 'wakeOverlapTRel', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                 'wsArray%i' % direction_id]))
@@ -62,22 +107,26 @@ class DirectionGroup(Group):
                            'wtPower%i' % direction_id, 'dir_power%i' % direction_id])
 
         if use_rotor_components:
-            self.connect('myFloris.Cp_out', 'powerComp.Cp')
+            self.connect('rotorGroup.Cp_out', 'powerComp.Cp')
         else:
-            self.connect('CtCp.Ct_out', 'myFloris.Ct')
+            self.connect('CtCp.Ct_out', 'myModel.Ct')
             self.connect('CtCp.Cp_out', 'powerComp.Cp')
 
 
-# TODO make this group general
 class AEPGroup(Group):
     """
     Group containing all necessary components for wind plant AEP calculations using the FLORIS model
     """
 
     def __init__(self, nTurbines, nDirections=1, use_rotor_components=False, datasize=0,
-                 differentiable=True, optimizingLayout=False, nSamples=0):
+                 differentiable=True, optimizingLayout=False, nSamples=0, model=Floris,
+                 model_options=None):
 
         super(AEPGroup, self).__init__()
+
+        if model_options is None:
+            model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+                             'nSamples': nSamples, 'verbose': False}
 
         # providing default unit types for general MUX/DeMUX components
         power_units = 'kW'
@@ -100,10 +149,9 @@ class AEPGroup(Group):
         self.add('dv8', IndepVarComp('air_density', val=1.1716, units='kg/(m*m*m)'), promotes=['*'])
 
         # add variable tree IndepVarComps
-        add_model_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
+        add_floris_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
         add_gen_params_IdepVarComps(self, datasize=datasize)
 
-        #TODO this is not general enough
         if not use_rotor_components:
             self.add('dv9', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])
             self.add('dv10', IndepVarComp('Cp_in', np.zeros(nTurbines)), promotes=['*'])
@@ -112,7 +160,6 @@ class AEPGroup(Group):
         self.add('windDirectionsDeMUX', DeMUX(nDirections, units=direction_units))
         self.add('windSpeedsDeMUX', DeMUX(nDirections, units=wind_speed_units))
 
-        #TODO this is not general enough
         pg = self.add('all_directions', ParallelGroup(), promotes=['*'])
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections):
@@ -120,7 +167,8 @@ class AEPGroup(Group):
                 pg.add('direction_group%i' % direction_id,
                        DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
                                       use_rotor_components=use_rotor_components, datasize=datasize,
-                                      differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples),
+                                      differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples,
+                                      model=model, model_options=model_options),
                        promotes=(['gen_params:*', 'model_params:*', 'air_density',
                                   'axialInduction', 'generatorEfficiency', 'turbineX', 'turbineY', 'hubHeight',
                                   'yaw%i' % direction_id, 'rotorDiameter', 'wtVelocity%i' % direction_id,
@@ -137,7 +185,8 @@ class AEPGroup(Group):
                 pg.add('direction_group%i' % direction_id,
                        DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
                                       use_rotor_components=use_rotor_components, datasize=datasize,
-                                      differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples),
+                                      differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples,
+                                      model=model, model_options=model_options),
                        promotes=(['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight', 'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,

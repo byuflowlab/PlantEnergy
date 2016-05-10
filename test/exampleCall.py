@@ -1,5 +1,5 @@
 from openmdao.api import Problem, Group
-from florisse.floris import AEPGroup
+from florisse.GeneralWindFarmGroups import AEPGroup
 
 import time
 import numpy as np
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     prob['windFrequencies'] = np.array([wind_frequency])
     prob['Ct_in'] = Ct
     prob['Cp_in'] = Cp
-    prob['floris_params:cos_spread'] = 1E12         # turns off cosine spread (just needs to be very large)
+    prob['model_params:cos_spread'] = 1E12         # turns off cosine spread (just needs to be very large)
     # prob['floris_params:useWakeAngle'] = True
     # run the problem
     print 'start FLORIS run'

@@ -78,7 +78,7 @@ if __name__ == "__main__":
     prob['windFrequencies'] = np.array([wind_frequency])
     prob['Ct_in'] = Ct
     prob['Cp_in'] = Cp
-    prob['floris_params:FLORISoriginal'] = True
+    prob['model_params:FLORISoriginal'] = True
     prob['gen_params:CPcorrected'] = False
     prob['gen_params:CTcorrected'] = False
 

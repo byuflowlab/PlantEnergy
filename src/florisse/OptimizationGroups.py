@@ -11,8 +11,9 @@ import numpy as np
 
 from openmdao.api import Group, IndepVarComp, ExecComp
 
-from florisse.floris import DirectionGroup, AEPGroup
+from GeneralWindFarmGroups import DirectionGroup, AEPGroup
 from GeneralWindFarmComponents import SpacingComp, BoundaryComp
+from floris import Floris
 
 
 class OptPowerOneDir(Group):
@@ -103,9 +104,13 @@ class OptAEP(Group):
     """
 
     def __init__(self, nTurbines, nDirections=1, minSpacing=2., use_rotor_components=True,
-                 datasize=0, differentiable=True, force_fd=False, nVertices=0):
+                 datasize=0, differentiable=True, force_fd=False, nVertices=0, model=Floris, model_options=None):
 
         super(OptAEP, self).__init__()
+
+        if model_options is None:
+            model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+                             'nSamples': 0, 'verbose': False}
 
         self.fd_options['force_fd'] = force_fd
         self.fd_options['form'] = 'forward'
@@ -114,7 +119,8 @@ class OptAEP(Group):
         # add component that calculates AEP
         self.add('AEPgroup', AEPGroup(nTurbines=nTurbines, nDirections=nDirections,
                                             use_rotor_components=use_rotor_components,
-                                            datasize=datasize, differentiable=differentiable),
+                                            datasize=datasize, differentiable=differentiable, model=model,
+                                            model_options=model_options),
                  promotes=['*'])
 
         # add component that calculates spacing between each pair of turbines

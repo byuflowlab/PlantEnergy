@@ -1,5 +1,5 @@
 from openmdao.api import Problem, Group
-from florisse.floris import AEPGroup
+from florisse.GeneralWindFarmGroups import AEPGroup
 
 import time
 import numpy as np
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     prob['air_density'] = air_density
     prob['windDirections'] = np.array([wind_direction])
     prob['windFrequencies'] = np.array([wind_frequency])
-    prob['floris_params:FLORISoriginal'] = False
+    prob['model_params:FLORISoriginal'] = False
 
     if use_rotor_components:
         prob['gen_params:windSpeedToCPCT_CP'] = NREL5MWCPCT['CP']
