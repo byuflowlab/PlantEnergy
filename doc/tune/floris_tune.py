@@ -149,7 +149,7 @@ def plotSOWFAvsFLORIS(prob, just_SOWFA=True, plot_prefix=""):
     # quit()
     FLORISpower = np.array(FLORISpower)
 
-    SOWFApower = np.array([ICOWESdata['yawPowerT1'][0],ICOWESdata['yawPowerT2'][0]]).transpose()/1000.
+    SOWFApower = np.array([ICOWESdata['yawPowerT1'][0], ICOWESdata['yawPowerT2'][0]]).transpose()/1000.
 
     error_turbine2 = np.sum(np.abs(FLORISpower[:, 1] - SOWFApower[:, 1]))
 
