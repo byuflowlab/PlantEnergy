@@ -1,6 +1,10 @@
 import numpy as np
 
-from openmdao.api import Group, IndepVarComp, ParallelGroup, PetscKSP, ScipyGMRES, NLGaussSeidel
+from openmdao.api import Group, IndepVarComp, ParallelGroup, ScipyGMRES, NLGaussSeidel
+
+from openmdao.core.mpi_wrap import MPI
+if MPI:
+    from openmdao.api import PetscKSP
 
 from floris import Floris, add_floris_params_IndepVarComps
 
