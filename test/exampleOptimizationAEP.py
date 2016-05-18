@@ -79,7 +79,8 @@ if __name__ == "__main__":
     wind_speed = 8.0        # m/s
     air_density = 1.1716    # kg/m^3
     windDirections = np.linspace(0, 270, size)
-    windFrequencies = np.ones_like(windDirections)*1.0/size
+    windSpeeds = np.ones(size)*wind_speed
+    windFrequencies = np.ones(size)/size
 
     # initialize problem
     prob = Problem(impl=impl, root=OptAEP(nTurbines=nTurbs, nDirections=windDirections.size,
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     # set up optimizer
     prob.driver = pyOptSparseDriver()
     prob.driver.options['optimizer'] = 'SNOPT'
-    prob.driver.add_objective('obj', scaler=1E-8)
+    prob.driver.add_objective('obj', scaler=1E-5)
 
     # set optimizer options
     prob.driver.opt_settings['Verify level'] = 3
@@ -97,13 +98,13 @@ if __name__ == "__main__":
     prob.driver.opt_settings['Major iterations limit'] = 1000
 
     # select design variables
-    prob.driver.add_desvar('turbineX', lower=np.ones(nTurbs)*min(turbineX), upper=np.ones(nTurbs)*max(turbineX), scaler=1E-2)
-    prob.driver.add_desvar('turbineY', lower=np.ones(nTurbs)*min(turbineY), upper=np.ones(nTurbs)*max(turbineY), scaler=1E-2)
+    prob.driver.add_desvar('turbineX', lower=np.ones(nTurbs)*min(turbineX), upper=np.ones(nTurbs)*max(turbineX), scaler=1)
+    prob.driver.add_desvar('turbineY', lower=np.ones(nTurbs)*min(turbineY), upper=np.ones(nTurbs)*max(turbineY), scaler=1)
     for direction_id in range(0, windDirections.size):
-        prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1E-1)
+        prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
 
     # add constraints
-    prob.driver.add_constraint('sc', lower=np.zeros(((nTurbs-1.)*nTurbs/2.)), scaler=1.0/rotor_diameter)
+    prob.driver.add_constraint('sc', lower=np.zeros(((nTurbs-1.)*nTurbs/2.)), scaler=1.0)
 
     tic = time.time()
     prob.setup(check=False)
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     prob['rotorDiameter'] = rotorDiameter
     prob['axialInduction'] = axialInduction
     prob['generatorEfficiency'] = generatorEfficiency
-    prob['windSpeeds'] = np.ones(windDirections.size)*wind_speed
+    prob['windSpeeds'] = windSpeeds
     prob['air_density'] = air_density
     prob['windDirections'] = windDirections
     prob['windFrequencies'] = windFrequencies
@@ -157,16 +158,18 @@ if __name__ == "__main__":
     mpi_print(prob,  'wind farm power in each direction (kW): %s' % prob['dirPowers'])
     mpi_print(prob,  'AEP (kWh): %s' % prob['AEP'])
 
-    xbounds = [min(turbineX), min(turbineX), max(turbineX), max(turbineX), min(turbineX)]
-    ybounds = [min(turbineY), max(turbineY), max(turbineY), min(turbineY), min(turbineX)]
+    xbounds = [min(turbineX)/rotor_diameter, min(turbineX)/rotor_diameter, max(turbineX)/rotor_diameter, max(turbineX)/rotor_diameter, min(turbineX)/rotor_diameter]
+    ybounds = [min(turbineY)/rotor_diameter, max(turbineY)/rotor_diameter, max(turbineY)/rotor_diameter, min(turbineY)/rotor_diameter, min(turbineX)/rotor_diameter]
 
     plt.figure()
-    plt.plot(turbineX, turbineY, 'ok', label='Original')
-    plt.plot(prob['turbineX'], prob['turbineY'], 'og', label='Optimized')
+    plt.plot(turbineX/rotor_diameter, turbineY/rotor_diameter, 'ok', label='Original')
+    plt.plot(prob['turbineX']/rotor_diameter, prob['turbineY']/rotor_diameter, 'og', label='Optimized')
     plt.plot(xbounds, ybounds, ':k')
     for i in range(0, nTurbs):
-        plt.plot([turbineX[i], prob['turbineX'][i]], [turbineY[i], prob['turbineY'][i]], '--k')
+        plt.plot([turbineX[i]/rotor_diameter, prob['turbineX'][i]/rotor_diameter], [turbineY[i]/rotor_diameter, prob['turbineY'][i]/rotor_diameter], '--k')
     plt.legend()
-    plt.xlabel('Turbine X Position (m)')
-    plt.ylabel('Turbine Y Position (m)')
+    plt.xlabel('Turbine X Position ($X/D_r$)')
+    plt.ylabel('Turbine Y Position ($Y/D_r$)')
+    plt.xlim([3, 12])
+    plt.ylim([3, 12])
     plt.show()
