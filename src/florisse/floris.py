@@ -180,6 +180,8 @@ def add_floris_params_IndepVarComps(openmdao_object, use_rotor_components=False)
                                              desc='spread of cosine smoothing factor (multiple of sum of wake and '
                                                   'rotor radii)'),
                         promotes=['*'])
+
+
     openmdao_object.add('fp12', IndepVarComp('model_params:keCorrArray', 0.0, pass_by_obj=True,
                                              desc='multiplies the ke value by 1+keCorrArray*(sum of rotors relative '
                                                   'overlap with inner two zones for including array affects'),
@@ -235,13 +237,13 @@ class Floris(Component):
         self.nSamples = model_options['nSamples']
         use_rotor_components = model_options['use_rotor_components']
 
-        self.fd_options['form'] = 'central'
-        self.fd_options['step_size'] = 1.0e-6
-        self.fd_options['step_type'] = 'relative'
+        self.deriv_options['form'] = 'central'
+        self.deriv_options['step_size'] = 1.0e-6
+        self.deriv_options['step_calc'] = 'relative'
 
         if not self.differentiable:
-            self.fd_options['force_fd'] = True
-            self.fd_options['form'] = 'forward'
+            self.deriv_options['type'] = 'fd'
+            self.deriv_options['form'] = 'forward'
 
         # FLORIS parameters
         add_floris_parameters(self, use_rotor_components=use_rotor_components)

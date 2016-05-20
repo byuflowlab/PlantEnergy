@@ -40,7 +40,7 @@ class RotorSolveGroup(Group):
                  promotes=['gen_params:*', 'yaw%i' % direction_id,
                            'wtVelocity%i' % direction_id, 'Cp_out'])
 
-        self.add('floris', Floris(nTurbines, direction_id=direction_id, model_options=model_options),
+        self.add('floris', model(nTurbines, direction_id=direction_id, model_options=model_options),
                  promotes=(['model_params:*', 'wind_speed', 'axialInduction',
                             'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
                             'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
@@ -68,7 +68,6 @@ class DirectionGroup(Group):
         if add_IdepVarComps:
             add_floris_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
             add_gen_params_IdepVarComps(self, datasize=datasize)
-
 
         self.add('directionConversion', WindFrame(nTurbines, differentiable=differentiable, nSamples=nSamples),
                  promotes=['*'])
@@ -155,6 +154,9 @@ class AEPGroup(Group):
         # add variable tree IndepVarComps
         add_floris_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
         add_gen_params_IdepVarComps(self, datasize=datasize)
+        self.add('jp0', IndepVarComp('model_params:alpha', 0.1, pass_by_obj=True,
+                                     desc='parameter for jensen'),
+                 promotes=['*'])
 
         if not use_rotor_components:
             self.add('dv9', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])

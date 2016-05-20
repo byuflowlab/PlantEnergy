@@ -112,8 +112,9 @@ class OptAEP(Group):
             model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
                              'nSamples': 0, 'verbose': False}
 
-        self.fd_options['force_fd'] = force_fd
-        self.fd_options['form'] = 'forward'
+        if force_fd:
+            self.deriv_options['type'] = 'fd'
+            self.deriv_options['form'] = 'forward'
 
         # ##### add major components and groups
         # add component that calculates AEP
