@@ -113,8 +113,8 @@ class OptAEP(Group):
                              'nSamples': 0, 'verbose': False}
 
         if force_fd:
-            self.deriv_options['type'] = 'fd'
-            self.deriv_options['form'] = 'forward'
+            self.fd_options['force_fd'] = True
+            self.fd_options['form'] = 'forward'
 
         # ##### add major components and groups
         # add component that calculates AEP

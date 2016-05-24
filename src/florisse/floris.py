@@ -237,13 +237,13 @@ class Floris(Component):
         self.nSamples = model_options['nSamples']
         use_rotor_components = model_options['use_rotor_components']
 
-        self.deriv_options['form'] = 'central'
-        self.deriv_options['step_size'] = 1.0e-6
-        self.deriv_options['step_calc'] = 'relative'
+        self.fd_options['form'] = 'central'
+        self.fd_options['step_size'] = 1.0e-6
+        self.fd_options['step_type'] = 'relative'
 
         if not self.differentiable:
-            self.deriv_options['type'] = 'fd'
-            self.deriv_options['form'] = 'forward'
+            self.fd_options['force_fd'] = True
+            self.fd_options['form'] = 'forward'
 
         # FLORIS parameters
         add_floris_parameters(self, use_rotor_components=use_rotor_components)
