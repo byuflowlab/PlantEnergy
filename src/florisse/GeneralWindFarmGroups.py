@@ -158,6 +158,16 @@ class AEPGroup(Group):
                                      desc='parameter for jensen'),
                  promotes=['*'])
 
+        # add variable tree stuff for Larsen
+        self.add('lp0', IndepVarComp('model_params:Ia', val=0.0, pass_by_object=True), promotes=['*']) # Ambient Turbulence Intensity
+        self.add('lp1', IndepVarComp('model_params:air_density', val = 0.0,  units='kg/m*m*m', pass_by_object=True), promotes=['*'])
+        self.add('lp2', IndepVarComp('model_params:windSpeedToCPCT_wind_speed', np.zeros(datasize), units='m/s',
+                                     desc='range of wind speeds', pass_by_obj=True), promotes=['*'])
+        self.add('lp3', IndepVarComp('model_params:windSpeedToCPCT_CP', np.zeros(datasize),
+                                     desc='power coefficients', pass_by_obj=True), promotes=['*'])
+        self.add('lp4', IndepVarComp('model_params:windSpeedToCPCT_CT', np.zeros(datasize),
+                                     desc='thrust coefficients', pass_by_obj=True), promotes=['*'])
+
         if not use_rotor_components:
             self.add('dv9', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])
             self.add('dv10', IndepVarComp('Cp_in', np.zeros(nTurbines)), promotes=['*'])
