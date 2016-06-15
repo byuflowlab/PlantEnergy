@@ -85,10 +85,10 @@ class WindFrame(Component):
             velY = params['wsPositionY']
 
         # adjust directions
-        # windDirectionDeg = 270. - windDirectionDeg
-        windDirectionDeg = 90. - windDirectionDeg
-        # if windDirectionDeg < 0.:
-        #     windDirectionDeg += 360.
+        windDirectionDeg = 270. - windDirectionDeg
+        # windDirectionDeg = 90. - windDirectionDeg # how this was done in SusTech conference paper (oops!)
+        if windDirectionDeg < 0.:
+            windDirectionDeg += 360.
         windDirectionRad = np.pi*windDirectionDeg/180.0    # inflow wind direction in radians
 
         # convert to downwind(x)-crosswind(y) coordinates
