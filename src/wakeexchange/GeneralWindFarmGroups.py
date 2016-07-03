@@ -40,16 +40,15 @@ class RotorSolveGroup(Group):
                  promotes=['gen_params:*', 'yaw%i' % direction_id,
                            'wtVelocity%i' % direction_id, 'Cp_out'])
 
+        # TODO refactor the model component instance
         self.add('floris', model(nTurbines, direction_id=direction_id, model_options=model_options),
                  promotes=(['model_params:*', 'wind_speed', 'axialInduction',
                             'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                            'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
-                            'wakeOverlapTRel']
+                            'wtVelocity%i' % direction_id]
                            if (nSamples == 0) else
                            ['model_params:*', 'wind_speed', 'axialInduction',
                             'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                            'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
-                            'wakeOverlapTRel', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                            'wtVelocity%i' % direction_id, 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                             'wsArray%i' % direction_id]))
         self.connect('CtCp.Ct_out', 'floris.Ct')
 
@@ -79,13 +78,11 @@ class DirectionGroup(Group):
                                                  model=Floris, model_options=model_options),
                      promotes=(['gen_params:*', 'yaw%i' % direction_id, 'wtVelocity%i' % direction_id,
                                 'model_params:*', 'wind_speed', 'axialInduction',
-                                'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight', 'wakeCentersYT', 'wakeDiametersT',
-                                'wakeOverlapTRel']
+                                'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight']
                                if (nSamples == 0) else
                                ['gen_params:*', 'yaw%i' % direction_id, 'wtVelocity%i' % direction_id,
                                 'model_params:*', 'wind_speed', 'axialInduction',
-                                'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight', 'wakeCentersYT', 'wakeDiametersT',
-                                'wakeOverlapTRel', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                                'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                 'wsArray%i' % direction_id]))
         else:
             self.add('CtCp', AdjustCtCpYaw(nTurbines, direction_id, differentiable),
@@ -94,13 +91,11 @@ class DirectionGroup(Group):
             self.add('myModel', model(nTurbines, direction_id=direction_id, model_options=model_options),
                      promotes=(['model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                                'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
-                                'wakeOverlapTRel']
+                                'wtVelocity%i' % direction_id]
                                if (nSamples == 0) else
                                ['model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                                'wtVelocity%i' % direction_id, 'wakeCentersYT', 'wakeDiametersT',
-                                'wakeOverlapTRel', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                                'wtVelocity%i' % direction_id, 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                 'wsArray%i' % direction_id]))
 
         self.add('powerComp', WindDirectionPower(nTurbines=nTurbines, direction_id=direction_id, differentiable=True,
