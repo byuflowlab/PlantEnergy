@@ -50,7 +50,7 @@ class TestFlorisWrapper(unittest.TestCase):
         # set up problem
 
         model_options = {'differentiable': True, 'use_rotor_components': False, 'nSamples': 0, 'verbose': False}
-        prob = Problem(root=AEPGroup(nTurbs, nDirections, model=floris_wrapper, model_options=model_options))
+        prob = Problem(root=AEPGroup(nTurbs, nDirections, wake_model=floris_wrapper, wake_model_options=model_options))
 
         # initialize problem
         prob.setup(check=True)

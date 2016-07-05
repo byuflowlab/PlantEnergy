@@ -16,13 +16,13 @@ from GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, MUX, WindFarmAEP
 class RotorSolveGroup(Group):
 
     def __init__(self, nTurbines, direction_id=0, datasize=0, differentiable=True,
-                 use_rotor_components=False, nSamples=0, model=Floris,
-                 model_options=None):
+                 use_rotor_components=False, nSamples=0, wake_model=Floris,
+                 wake_model_options=None):
 
         super(RotorSolveGroup, self).__init__()
 
-        if model_options is None:
-            model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+        if wake_model_options is None:
+            wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
                              'nSamples': nSamples}
 
         from openmdao.core.mpi_wrap import MPI
@@ -41,7 +41,7 @@ class RotorSolveGroup(Group):
                            'wtVelocity%i' % direction_id, 'Cp_out'])
 
         # TODO refactor the model component instance
-        self.add('floris', model(nTurbines, direction_id=direction_id, model_options=model_options),
+        self.add('floris', wake_model(nTurbines, direction_id=direction_id, wake_model_options=wake_model_options),
                  promotes=(['model_params:*', 'wind_speed', 'axialInduction',
                             'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
                             'wtVelocity%i' % direction_id]
@@ -60,8 +60,8 @@ class DirectionGroup(Group):
     """
 
     def __init__(self, nTurbines, direction_id=0, use_rotor_components=False, datasize=0,
-                 differentiable=True, add_IdepVarComps=True, nSamples=0, model=Floris,
-                 model_options=None):
+                 differentiable=True, add_IdepVarComps=True, nSamples=0, wake_model=Floris,
+                 wake_model_options=None):
         super(DirectionGroup, self).__init__()
 
         if add_IdepVarComps:
@@ -75,7 +75,7 @@ class DirectionGroup(Group):
             self.add('rotorGroup', RotorSolveGroup(nTurbines, direction_id=direction_id,
                                                  datasize=datasize, differentiable=differentiable,
                                                  nSamples=nSamples, use_rotor_components=use_rotor_components,
-                                                 model=Floris, model_options=model_options),
+                                                 wake_model=Floris, wake_model_options=wake_model_options),
                      promotes=(['gen_params:*', 'yaw%i' % direction_id, 'wtVelocity%i' % direction_id,
                                 'model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight']
@@ -88,7 +88,7 @@ class DirectionGroup(Group):
             self.add('CtCp', AdjustCtCpYaw(nTurbines, direction_id, differentiable),
                      promotes=['Ct_in', 'Cp_in', 'gen_params:*', 'yaw%i' % direction_id])
 
-            self.add('myModel', model(nTurbines, direction_id=direction_id, model_options=model_options),
+            self.add('myModel', wake_model(nTurbines, direction_id=direction_id, wake_model_options=wake_model_options),
                      promotes=(['model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
                                 'wtVelocity%i' % direction_id]
@@ -117,13 +117,14 @@ class AEPGroup(Group):
     """
 
     def __init__(self, nTurbines, nDirections=1, use_rotor_components=False, datasize=0,
-                 differentiable=True, optimizingLayout=False, nSamples=0, model=Floris,
-                 model_options=None):
+                 differentiable=True, optimizingLayout=False, nSamples=0, wake_model=Floris,
+                 wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
+                 params_IndepVar_args=None):
 
         super(AEPGroup, self).__init__()
 
-        if model_options is None:
-            model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+        if wake_model_options is None:
+            wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
                              'nSamples': nSamples, 'verbose': False}
 
         # providing default unit types for general MUX/DeMUX components
@@ -145,28 +146,20 @@ class AEPGroup(Group):
         self.add('dv6', IndepVarComp('axialInduction', np.zeros(nTurbines)), promotes=['*'])
         self.add('dv7', IndepVarComp('generatorEfficiency', np.zeros(nTurbines)), promotes=['*'])
         self.add('dv8', IndepVarComp('air_density', val=1.1716, units='kg/(m*m*m)'), promotes=['*'])
-
-        # add variable tree IndepVarComps
-        add_floris_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
-        add_gen_params_IdepVarComps(self, datasize=datasize)
-        self.add('jp0', IndepVarComp('model_params:alpha', 0.1, pass_by_obj=True,
-                                     desc='parameter for jensen'),
-                 promotes=['*'])
-
-        # add variable tree and indep-var stuff for Larsen
-        self.add('lp0', IndepVarComp('model_params:Ia', val=0.0, pass_by_object=True), promotes=['*']) # Ambient Turbulence Intensity
-        self.add('lp1', IndepVarComp('model_params:air_density', val=0.0,  units='kg/m*m*m', pass_by_object=True), promotes=['*'])
-        self.add('lp2', IndepVarComp('model_params:windSpeedToCPCT_wind_speed', np.zeros(datasize), units='m/s',
-                                     desc='range of wind speeds', pass_by_obj=True), promotes=['*'])
-        self.add('lp3', IndepVarComp('model_params:windSpeedToCPCT_CP', np.zeros(datasize),
-                                     desc='power coefficients', pass_by_obj=True), promotes=['*'])
-        self.add('lp4', IndepVarComp('model_params:windSpeedToCPCT_CT', np.zeros(datasize),
-                                     desc='thrust coefficients', pass_by_obj=True), promotes=['*'])
-        self.add('lp5', IndepVarComp('hubHeight', np.zeros(nTurbines)), promotes=['*'])
-
         if not use_rotor_components:
             self.add('dv9', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])
             self.add('dv10', IndepVarComp('Cp_in', np.zeros(nTurbines)), promotes=['*'])
+
+        # add variable tree IndepVarComps
+        add_gen_params_IdepVarComps(self, datasize=datasize)
+
+        # indep variable components for wake model
+        if params_IdepVar_func is not None:
+            if (params_IndepVar_args is None) and (wake_model is Floris):
+                params_IndepVar_args = {'use_rotor_components': False}
+            elif params_IndepVar_args is None:
+                params_IndepVar_args = {}
+            params_IdepVar_func(self, **params_IndepVar_args)
 
         # add components and groups
         self.add('windDirectionsDeMUX', DeMUX(nDirections, units=direction_units))
@@ -180,7 +173,7 @@ class AEPGroup(Group):
                        DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
                                       use_rotor_components=use_rotor_components, datasize=datasize,
                                       differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples,
-                                      model=model, model_options=model_options),
+                                      wake_model=wake_model, wake_model_options=wake_model_options),
                        promotes=(['gen_params:*', 'model_params:*', 'air_density',
                                   'axialInduction', 'generatorEfficiency', 'turbineX', 'turbineY', 'hubHeight',
                                   'yaw%i' % direction_id, 'rotorDiameter', 'wtVelocity%i' % direction_id,
@@ -198,7 +191,7 @@ class AEPGroup(Group):
                        DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
                                       use_rotor_components=use_rotor_components, datasize=datasize,
                                       differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples,
-                                      model=model, model_options=model_options),
+                                      wake_model=wake_model, wake_model_options=wake_model_options),
                        promotes=(['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight', 'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,

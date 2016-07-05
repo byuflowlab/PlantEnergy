@@ -104,11 +104,13 @@ class OptAEP(Group):
     """
 
     def __init__(self, nTurbines, nDirections=1, minSpacing=2., use_rotor_components=True,
-                 datasize=0, differentiable=True, force_fd=False, nVertices=0, model=Floris, model_options=None):
+                 datasize=0, differentiable=True, force_fd=False, nVertices=0, wake_model=Floris,
+                 wake_model_options=None):
+
 
         super(OptAEP, self).__init__()
 
-        if model_options is None:
+        if wake_model_options is None:
             model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
                              'nSamples': 0, 'verbose': False}
 
@@ -120,8 +122,8 @@ class OptAEP(Group):
         # add component that calculates AEP
         self.add('AEPgroup', AEPGroup(nTurbines=nTurbines, nDirections=nDirections,
                                             use_rotor_components=use_rotor_components,
-                                            datasize=datasize, differentiable=differentiable, model=model,
-                                            model_options=model_options),
+                                            datasize=datasize, differentiable=differentiable, wake_model=wake_model,
+                                            wake_model_options=wake_model_options),
                  promotes=['*'])
 
         # add component that calculates spacing between each pair of turbines

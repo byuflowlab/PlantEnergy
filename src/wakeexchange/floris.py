@@ -1,3 +1,7 @@
+"""
+
+"""
+
 import numpy as np
 from openmdao.api import Group, Component, Problem, IndepVarComp
 from florisse.floris import Floris
@@ -6,6 +10,7 @@ import re
 
 def add_floris_params_IndepVarComps(openmdao_object, use_rotor_components=False):
 
+    print use_rotor_components
     # permanently alter defaults here
 
     # ##################   wake deflection   ##################
@@ -122,7 +127,7 @@ def add_floris_params_IndepVarComps(openmdao_object, use_rotor_components=False)
 
 
 class FLORISParameters(Component):
-    """Container of FLORIS wake parameters"""
+    """Container of FLORIS wake model parameters"""
 
     def __init__(self, use_rotor_components):
 
@@ -240,26 +245,23 @@ class FLORISParameters(Component):
 
 class floris_wrapper(Group):
 
-    def __init__(self, nTurbines, direction_id=0, model_options=None):
+    def __init__(self, nTurbines, direction_id=0, wake_model_options=None):
 
         super(floris_wrapper, self).__init__()
 
-        if model_options is None:
-            model_options = {'differentiable': True, 'use_rotor_components': False, 'nSamples': 0, 'verbose': False}
+        if wake_model_options is None:
+            wake_wake_model_options = {'differentiable': True, 'use_rotor_components': False, 'nSamples': 0, 'verbose': False}
 
         self.direction_id = direction_id
         self.nTurbines = nTurbines
 
-        self.add('floris_params', FLORISParameters(model_options['use_rotor_components']), promotes=['*'])
+        self.add('floris_params', FLORISParameters(wake_model_options['use_rotor_components']), promotes=['*'])
 
-        self.add('floris_model', Floris(nTurbines, direction_id, model_options['differentiable'],
-                                        model_options['use_rotor_components'], model_options['nSamples']),
+        self.add('floris_model', Floris(nTurbines, direction_id, wake_model_options['differentiable'],
+                                        wake_model_options['use_rotor_components'], wake_model_options['nSamples']),
                  promotes=['turbineXw', 'turbineYw', 'yaw%i' % direction_id, 'hubHeight',
                            'rotorDiameter', 'Ct', 'wind_speed', 'axialInduction', 'wtVelocity%i' % direction_id,
                            'floris_params*', ])
-
-
-
 
 
 # Testing code for development only
@@ -270,7 +272,7 @@ if __name__ == "__main__":
 
     prob = Problem()
     prob.root = Group()
-    prob.root.add('ftest', model_wrapper(nTurbines, direction_id), promotes=['*'])
+    prob.root.add('ftest', floris_wrapper(nTurbines, direction_id), promotes=['*'])
 
     prob.setup(check=True)
 
