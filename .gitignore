@@ -92,6 +92,7 @@ nosetests.xml
 Icon?
 ehthumbs.db
 Thumbs.db
+.idea*
 
 # Ignore ipython checkpoints
 .ipynb_checkpoints
