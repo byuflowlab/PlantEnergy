@@ -13,7 +13,7 @@ from openmdao.api import Group, IndepVarComp, ExecComp
 
 from GeneralWindFarmGroups import DirectionGroup, AEPGroup
 from GeneralWindFarmComponents import SpacingComp, BoundaryComp
-from floris import Floris
+from floris import floris_wrapper, add_floris_params_IndepVarComps
 
 
 class OptPowerOneDir(Group):
@@ -104,8 +104,9 @@ class OptAEP(Group):
     """
 
     def __init__(self, nTurbines, nDirections=1, minSpacing=2., use_rotor_components=True,
-                 datasize=0, differentiable=True, force_fd=False, nVertices=0, wake_model=Floris,
-                 wake_model_options=None):
+                 datasize=0, differentiable=True, force_fd=False, nVertices=0, wake_model=floris_wrapper,
+                 wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
+                 params_IndepVar_args={'use_rotor_components': False}):
 
 
         super(OptAEP, self).__init__()
@@ -123,7 +124,9 @@ class OptAEP(Group):
         self.add('AEPgroup', AEPGroup(nTurbines=nTurbines, nDirections=nDirections,
                                             use_rotor_components=use_rotor_components,
                                             datasize=datasize, differentiable=differentiable, wake_model=wake_model,
-                                            wake_model_options=wake_model_options),
+                                            wake_model_options=wake_model_options,
+                                            params_IdepVar_func=params_IdepVar_func,
+                                            params_IndepVar_args=params_IndepVar_args),
                  promotes=['*'])
 
         # add component that calculates spacing between each pair of turbines

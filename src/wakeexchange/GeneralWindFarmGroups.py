@@ -6,7 +6,7 @@ from openmdao.core.mpi_wrap import MPI
 if MPI:
     from openmdao.api import PetscKSP
 
-from floris import Floris, add_floris_params_IndepVarComps
+from floris import floris_wrapper, add_floris_params_IndepVarComps
 
 from GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, MUX, WindFarmAEP, DeMUX, \
     CPCT_Interpolate_Gradients_Smooth, WindDirectionPower, add_gen_params_IdepVarComps, \
@@ -16,7 +16,7 @@ from GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, MUX, WindFarmAEP
 class RotorSolveGroup(Group):
 
     def __init__(self, nTurbines, direction_id=0, datasize=0, differentiable=True,
-                 use_rotor_components=False, nSamples=0, wake_model=Floris,
+                 use_rotor_components=False, nSamples=0, wake_model=floris_wrapper,
                  wake_model_options=None):
 
         super(RotorSolveGroup, self).__init__()
@@ -60,7 +60,7 @@ class DirectionGroup(Group):
     """
 
     def __init__(self, nTurbines, direction_id=0, use_rotor_components=False, datasize=0,
-                 differentiable=True, add_IdepVarComps=True, nSamples=0, wake_model=Floris,
+                 differentiable=True, add_IdepVarComps=True, nSamples=0, wake_model=floris_wrapper,
                  wake_model_options=None):
         super(DirectionGroup, self).__init__()
 
@@ -75,7 +75,7 @@ class DirectionGroup(Group):
             self.add('rotorGroup', RotorSolveGroup(nTurbines, direction_id=direction_id,
                                                  datasize=datasize, differentiable=differentiable,
                                                  nSamples=nSamples, use_rotor_components=use_rotor_components,
-                                                 wake_model=Floris, wake_model_options=wake_model_options),
+                                                 wake_model=wake_model, wake_model_options=wake_model_options),
                      promotes=(['gen_params:*', 'yaw%i' % direction_id, 'wtVelocity%i' % direction_id,
                                 'model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'hubHeight']
@@ -117,7 +117,7 @@ class AEPGroup(Group):
     """
 
     def __init__(self, nTurbines, nDirections=1, use_rotor_components=False, datasize=0,
-                 differentiable=True, optimizingLayout=False, nSamples=0, wake_model=Floris,
+                 differentiable=True, optimizingLayout=False, nSamples=0, wake_model=floris_wrapper,
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
                  params_IndepVar_args=None):
 

@@ -7,7 +7,7 @@ from wakeexchange.OptimizationGroups import AEPGroup
 
 from fusedwake.WindTurbine import WindTurbine
 from fusedwake.WindFarm import WindFarm
-from windIO.Plant import *  # WTLayout
+from windIO.Plant import WTLayout, yaml
 
 from openmdao.api import Problem
 
