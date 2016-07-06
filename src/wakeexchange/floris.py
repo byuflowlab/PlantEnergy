@@ -1,5 +1,7 @@
 """
-
+floris.py
+Created by Jared J. Thomas, Jul. 2016.
+Brigham Young University
 """
 
 import numpy as np

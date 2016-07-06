@@ -1,5 +1,5 @@
 """
-larsen.py
+jensen.py
 Created by Jared J. Thomas, Jul. 2016.
 Brigham Young University
 """
@@ -7,7 +7,6 @@ Brigham Young University
 from openmdao.api import IndepVarComp, Component, Group
 from jensen3d.JensenOpenMDAOconnect import wakeOverlap, effectiveVelocity, effectiveVelocityCosineOverlap, \
     effectiveVelocityCosineNoOverlap, effectiveVelocityConference, JensenCosineYaw
-import numpy as np
 
 
 def add_jensen_params_IndepVarComps(openmdao_object, use_angle=False):
