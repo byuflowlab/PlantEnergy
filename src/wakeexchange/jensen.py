@@ -6,7 +6,7 @@ Brigham Young University
 
 from openmdao.api import IndepVarComp, Component, Group
 from jensen3d.JensenOpenMDAOconnect import wakeOverlap, effectiveVelocity, effectiveVelocityCosineOverlap, \
-    effectiveVelocityCosineNoOverlap, effectiveVelocityConference, JensenCosineYaw
+    effectiveVelocityCosineNoOverlap, effectiveVelocityConference, JensenCosineYaw, JensenCosineYawIntegral
 
 
 def add_jensen_params_IndepVarComps(openmdao_object, use_angle=False):
@@ -47,4 +47,7 @@ class jensen_wrapper(Group):
             self.add('jensen_1', effectiveVelocityConference(nTurbines=nTurbs, direction_id=direction_id), promotes=['*'])
         elif wake_model_options['variant'] is 'CosineYaw_1R' or wake_model_options['variant'] is 'CosineYaw_2R':
             self.add('jensen_1', JensenCosineYaw(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
+                     promotes=['*'])
+        elif wake_model_options['variant'] is 'CosineYawIntegral':
+            self.add('f_1', JensenCosineYawIntegral(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
                      promotes=['*'])
