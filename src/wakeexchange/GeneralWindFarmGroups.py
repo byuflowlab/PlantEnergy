@@ -155,7 +155,7 @@ class AEPGroup(Group):
 
         # indep variable components for wake model
         if params_IdepVar_func is not None:
-            if (params_IndepVar_args is None) and (wake_model is Floris):
+            if (params_IndepVar_args is None) and (wake_model is floris_wrapper):
                 params_IndepVar_args = {'use_rotor_components': False}
             elif params_IndepVar_args is None:
                 params_IndepVar_args = {}

@@ -51,3 +51,6 @@ class jensen_wrapper(Group):
         elif wake_model_options['variant'] is 'CosineYawIntegral':
             self.add('f_1', JensenCosineYawIntegral(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
                      promotes=['*'])
+        elif wake_model_options['variant'] is 'CosineYaw':
+            self.add('f_1', JensenCosineYaw(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
+                     promotes=['*'])
