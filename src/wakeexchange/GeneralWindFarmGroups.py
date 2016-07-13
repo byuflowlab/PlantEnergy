@@ -95,7 +95,7 @@ class DirectionGroup(Group):
                                if (nSamples == 0) else
                                ['model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                                'wtVelocity%i' % direction_id, 'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                                'wtVelocity%i' % direction_id, 'wsPositionXw', 'wsPositionYw', 'wsPositionZ',
                                 'wsArray%i' % direction_id]))
 
         self.add('powerComp', WindDirectionPower(nTurbines=nTurbines, direction_id=direction_id, differentiable=True,

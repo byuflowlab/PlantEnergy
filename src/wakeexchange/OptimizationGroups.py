@@ -112,8 +112,14 @@ class OptAEP(Group):
         super(OptAEP, self).__init__()
 
         if wake_model_options is None:
-            model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+            wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
                              'nSamples': 0, 'verbose': False}
+
+        try:
+            nSamples = wake_model_options['nSamples']
+        except:
+            nSamples = 0
+
 
         if force_fd:
             self.fd_options['force_fd'] = True
@@ -126,7 +132,7 @@ class OptAEP(Group):
                                             datasize=datasize, differentiable=differentiable, wake_model=wake_model,
                                             wake_model_options=wake_model_options,
                                             params_IdepVar_func=params_IdepVar_func,
-                                            params_IndepVar_args=params_IndepVar_args),
+                                            params_IndepVar_args=params_IndepVar_args, nSamples=nSamples),
                  promotes=['*'])
 
         # add component that calculates spacing between each pair of turbines
