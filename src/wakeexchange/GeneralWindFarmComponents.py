@@ -315,6 +315,59 @@ class WindFarmAEP(Component):
 
         return J
 
+class calcICC(Component):
+    """
+    Calculates ICC (initial capital cost) for given windfarm layout
+    """
+
+    def __init__(self, nTurbines, nTopologyPoints):
+
+        super(calcICC, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        self.add_param('topologyX', val=np.zeros(nTopologyPoints),
+                       desc = 'x coordiantes of topology')
+        self.add_param('topologyY', val=np.zeros(nTopologyPoints),
+                       desc = 'y coordiantes of topology')
+        self.add_param('topologyZ', val=np.zeros(nTopologyPoints),
+                       desc = 'z coordiantes of topology')
+
+        # import topology information
+
+        # define output
+        self.add_output('ICC', val=0.0, units='Dollars', desc='Initial Capital Cost')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        topologyX = params['topologyX']
+        topologyY = params['topologyY']
+        topologyZ = params['topologyZ']
+
+        #calculate ICC
+        ICCpartsx = np.zeros([nTurbines,1])
+        ICCpartsy = np.zeros([nTurbines,1])
+
+        #need to come up with good way to interpolate between points
+        #right now, using linear interpolation
+        mx = (topologyZ[2]-topologyZ[0])/(topologyX[2]-topologyX[0])
+
+        my = (topologyZ[2]-topologyZ[0])/(topologyY[2]-topologyY[0])
+
+        for i in range(0, nTurbines):
+            ICCpartsx[i] = mx*(turbineX[i]-topologyX[2])+topologyZ[2]
+            ICCpartsy[i] = mx*(turbineY[i]-topologyY[2])+topologyZ[2]
+
+        unknowns['ICC'] = sum(ICCpartsx) +  sum(ICCpartsy)
 
 class SpacingComp(Component):
     """

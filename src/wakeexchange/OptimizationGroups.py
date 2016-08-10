@@ -12,7 +12,7 @@ import numpy as np
 from openmdao.api import Group, IndepVarComp, ExecComp
 
 from GeneralWindFarmGroups import DirectionGroup, AEPGroup
-from GeneralWindFarmComponents import SpacingComp, BoundaryComp
+from GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC
 from floris import floris_wrapper, add_floris_params_IndepVarComps
 
 
@@ -126,7 +126,7 @@ class OptAEP(Group):
             self.fd_options['form'] = 'forward'
 
         # ##### add major components and groups
-        # add component that calculates AEP
+        # add group that calculates AEP
         self.add('AEPgroup', AEPGroup(nTurbines=nTurbines, nDirections=nDirections,
                                             use_rotor_components=use_rotor_components,
                                             datasize=datasize, differentiable=differentiable, wake_model=wake_model,
@@ -134,6 +134,7 @@ class OptAEP(Group):
                                             params_IdepVar_func=params_IdepVar_func,
                                             params_IndepVar_args=params_IndepVar_args, nSamples=nSamples),
                  promotes=['*'])
+
 
         # add component that calculates spacing between each pair of turbines
         self.add('spacing_comp', SpacingComp(nTurbines=nTurbines), promotes=['*'])
@@ -151,3 +152,115 @@ class OptAEP(Group):
 
         # add objective component
         self.add('obj_comp', ExecComp('obj = -1.*AEP', AEP=0.0), promotes=['*'])
+
+class OptCOE(Group):
+    """
+        Group adding optimization parameters to an AEPGroup
+
+
+        ----------------
+        Design Variables
+        ----------------
+        turbineX:   1D numpy array containing the x coordinates of each turbine in the global reference frame
+        turbineY:   1D numpy array containing the x coordinates of each turbine in the global reference frame
+        yaw_i:      1D numpy array containing the yaw angle of each turbine in the wind direction reference frame for
+                    direction i
+
+        ---------------
+        Constant Inputs
+        ---------------
+        rotorDiameter:                          1D numpy array containing the rotor diameter of each turbine
+
+        axialInduction:                         1D numpy array containing the axial induction of each turbine. These
+                                                values are not actually used unless the appropriate floris_param is set.
+
+        generator_efficiency:                   1D numpy array containing the efficiency of each turbine generator
+
+        wind_speed:                             scalar containing a generally applied inflow wind speed
+
+        air_density:                            scalar containing the inflow air density
+
+        windDirections:                         1D numpy array containing the angle from N CW to the inflow direction
+
+        windrose_frequencies:                   1D numpy array containing the probability of each wind direction
+
+        Ct:                                     1D numpy array containing the thrust coefficient of each turbine
+
+        Cp:                                     1D numpy array containing the power coefficient of each turbine
+
+        floris_params:FLORISoriginal(False):    boolean specifying which formulation of the FLORIS model to use. (True
+                                                specfies to use the model as originally formulated and published).
+
+        floris_params:CPcorrected(True):        boolean specifying whether the Cp values provided have been adjusted
+                                                for yaw
+
+        floris_params:CTcorrected(True):        boolean specifying whether the Ct values provided have been adjusted
+                                                for yaw
+
+        -------
+        Returns
+        -------
+        COE:                scalar containing the final COE for the wind farm
+
+        power_directions:   1D numpy array containing the power production for each wind direction (unweighted)
+
+        velocitiesTurbines: 1D numpy array of velocity at each turbine in each direction. Currently only accessible by
+                            *.AEPgroup.dir%i.unknowns['velocitiesTurbines']
+
+        wt_powers: 1D numpy array of power production at each turbine in each direction. Currently only accessible by
+                            *.AEPgroup.dir%i.unknowns['velocitiesTurbines']
+
+    """
+
+    def __init__(self, nTurbines, nDirections=1, minSpacing=2., use_rotor_components=True,
+                 datasize=0, differentiable=True, force_fd=False, nVertices=0, wake_model=floris_wrapper,
+                 wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
+                 params_IndepVar_args={'use_rotor_components': False}, nTopologyPoints=0):
+
+
+        super(OptCOE, self).__init__()
+
+        if wake_model_options is None:
+            wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+                             'nSamples': 0, 'verbose': False}
+
+        try:
+            nSamples = wake_model_options['nSamples']
+        except:
+            nSamples = 0
+
+
+        if force_fd:
+            self.fd_options['force_fd'] = True
+            self.fd_options['form'] = 'forward'
+
+        # ##### add major components and groups
+        # add group that calculates AEP
+        self.add('AEPgroup', AEPGroup(nTurbines=nTurbines, nDirections=nDirections,
+                                            use_rotor_components=use_rotor_components,
+                                            datasize=datasize, differentiable=differentiable, wake_model=wake_model,
+                                            wake_model_options=wake_model_options,
+                                            params_IdepVar_func=params_IdepVar_func,
+                                            params_IndepVar_args=params_IndepVar_args, nSamples=nSamples),
+                 promotes=['*'])
+
+        # add component that calculates ICC
+        self.add('ICCcomp', calcICC(nTurbines=nTurbines, nTopologyPoints=nTopologyPoints), promotes=['*'])
+
+        # add component that calculates spacing between each pair of turbines
+        self.add('spacing_comp', SpacingComp(nTurbines=nTurbines), promotes=['*'])
+
+        if nVertices > 0:
+            # add component that enforces a convex hull wind farm boundary
+            self.add('boundary_con', BoundaryComp(nVertices=nVertices, nTurbines=nTurbines), promotes=['*'])
+
+        # ##### add constraint definitions
+        self.add('spacing_con', ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
+                                         minSpacing=minSpacing, rotorDiameter=np.zeros(nTurbines),
+                                         sc=np.zeros(((nTurbines-1.)*nTurbines/2.)),
+                                         wtSeparationSquared=np.zeros(((nTurbines-1.)*nTurbines/2.))),
+                 promotes=['*'])
+
+        # add objective component
+        self.add('obj_comp', ExecComp('obj = ICC', ICC=0.0), promotes=['*'])
+
