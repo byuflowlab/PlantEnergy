@@ -12,7 +12,7 @@ import numpy as np
 from openmdao.api import Group, IndepVarComp, ExecComp
 
 from GeneralWindFarmGroups import DirectionGroup, AEPGroup
-from GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC
+from GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC, calcFCR, calcLLC, calcLRC, calcOandM
 from floris import floris_wrapper, add_floris_params_IndepVarComps
 
 
@@ -247,6 +247,18 @@ class OptCOE(Group):
         # add component that calculates ICC
         self.add('ICCcomp', calcICC(nTurbines=nTurbines, nTopologyPoints=nTopologyPoints), promotes=['*'])
 
+        # add component that calculates FCR
+        self.add('FCRcomp', calcFCR(nTurbines=nTurbines), promotes=['*'])
+
+        # add component that calculates LLC
+        self.add('LLCcomp', calcLLC(nTurbines=nTurbines), promotes=['*'])
+
+        # add component that calculates O&M
+        self.add('OandMcomp', calcOandM(nTurbines=nTurbines), promotes=['*'])
+
+        # add component that calculates LRC
+        self.add('LCRcomp', calcLRC(nTurbines=nTurbines), promotes=['*'])
+
         # add component that calculates spacing between each pair of turbines
         self.add('spacing_comp', SpacingComp(nTurbines=nTurbines), promotes=['*'])
 
@@ -262,5 +274,5 @@ class OptCOE(Group):
                  promotes=['*'])
 
         # add objective component
-        self.add('obj_comp', ExecComp('obj = ICC', ICC=0.0), promotes=['*'])
+        self.add('obj_comp', ExecComp('obj = (FCR+ICC)/AEP+LLC+(OandM+LRC)/AEP', ICC=0.0, AEP=0.0, FCR=0.0, LLC=0.0, OandM=0.0, LRC=0.0), promotes=['*'])
 
