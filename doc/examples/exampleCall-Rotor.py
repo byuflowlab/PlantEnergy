@@ -1,5 +1,5 @@
 from openmdao.api import Problem, Group
-from florisse.GeneralWindFarmGroups import AEPGroup
+from wakeexchange.GeneralWindFarmGroups import AEPGroup
 
 import time
 import numpy as np

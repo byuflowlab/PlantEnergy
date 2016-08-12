@@ -1,8 +1,8 @@
 from __future__ import print_function
 
 from openmdao.api import Problem, pyOptSparseDriver
-from florisse.OptimizationGroups import OptAEP
-from florisse import config
+from wakeexchange.OptimizationGroups import OptAEP
+from wakeexchange import config
 
 import time
 import numpy as np

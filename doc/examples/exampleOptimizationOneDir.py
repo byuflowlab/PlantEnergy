@@ -1,5 +1,5 @@
 from openmdao.api import Problem, ScipyOptimizer, pyOptSparseDriver
-from florisse.OptimizationGroups import OptPowerOneDir
+from wakeexchange.OptimizationGroups import OptPowerOneDir
 
 import time
 import numpy as np
