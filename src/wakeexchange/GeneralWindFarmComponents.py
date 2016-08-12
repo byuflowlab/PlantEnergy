@@ -315,6 +315,198 @@ class WindFarmAEP(Component):
 
         return J
 
+class calcICC(Component):
+    """
+    Calculates ICC (initial capital cost) for given windfarm layout
+    The initial capital cost is the sum of the turbine system cost and the balance of station cost.
+    Neither cost includes construction financing or financing fees,
+    because these are calculated and added separately through the fixed charge rate.
+    The costs also do not include a debt service reserve fund, which is assumed to be zero for balance sheet financing.
+    """
+
+    def __init__(self, nTurbines, nTopologyPoints):
+
+        super(calcICC, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        self.add_param('hubHeight', val=np.zeros(nTurbines), units='m')
+
+        self.add_param('rotorDiameter', val=np.zeros(nTurbines), units='m')
+
+        self.add_param('topologyX', val=np.zeros(nTopologyPoints),
+                       desc = 'x coordiantes of topology')
+        self.add_param('topologyY', val=np.zeros(nTopologyPoints),
+                       desc = 'y coordiantes of topology')
+        self.add_param('topologyZ', val=np.zeros(nTopologyPoints),
+                       desc = 'z coordiantes of topology')
+
+        # import topology information
+
+        # define output
+        self.add_output('ICC', val=0.0, units='$', desc='Initial Capital Cost')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        topologyX = params['topologyX']
+        topologyY = params['topologyY']
+        topologyZ = params['topologyZ']
+
+        #calculate ICC
+        ICCpartsx = np.zeros([nTurbines,1])
+        ICCpartsy = np.zeros([nTurbines,1])
+
+        #need to come up with good way to interpolate between points
+        #right now, using linear interpolation
+        mx = (topologyZ[2]-topologyZ[0])/(topologyX[2]-topologyX[0])
+
+        my = (topologyZ[2]-topologyZ[0])/(topologyY[2]-topologyY[0])
+
+        for i in range(0, nTurbines):
+            ICCpartsx[i] = mx*(turbineX[i]-topologyX[2])+topologyZ[2]
+            ICCpartsy[i] = mx*(turbineY[i]-topologyY[2])+topologyZ[2]
+
+        unknowns['ICC'] = sum(ICCpartsx) +  sum(ICCpartsy)
+
+class calcFCR(Component):
+    """
+    Calculates FCR (fixed charge rate) for given windfarm layout
+    """
+
+    def __init__(self, nTurbines):
+
+        super(calcFCR, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        # define output
+        self.add_output('FCR', val=0.0, desc='Fixed Charge Rate')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        #calculate FCR
+        unknowns['FCR'] = 10000.0
+
+class calcLLC(Component):
+    """
+    Calculates LLC (landlease cost) for given windfarm layout
+    Annual operating expenses (AOE) include land or ocean bottom lease cost, levelized O&M cost,
+    and levelized replacement/overhaul cost (LRC). Land lease costs (LLC) are the rental or lease fees
+    charged for the turbine installation. LLC is expressed in units of $/kWh.
+    """
+
+    def __init__(self, nTurbines):
+
+        super(calcLLC, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        # define output
+        self.add_output('LLC', val=0.0, units='$/kWh', desc='Landlease Cost')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        #calculate LLC
+        unknowns['LLC'] = 10000.0
+
+class calcOandM(Component):
+    """
+    Calculates O&M (levelized operation & maintenance cost) for given windfarm layout
+    A component of AOE that is larger than the LLC is O&M cost. O&M is expressed in units of $/kWh.
+    The O&M cost normally includes
+        - labor, parts, and supplies for scheduled turbine maintenance
+        - labor, parts, and supplies for unscheduled turbine maintenance
+        - parts and supplies for equipment and facilities maintenance
+        - labor for administration and support.
+    """
+
+    def __init__(self, nTurbines):
+
+        super(calcOandM, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        # define output
+        self.add_output('OandM', val=0.0, units='$', desc='levelized O&M cost')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        #calculate LLC
+
+        #need to know area of boundary?
+
+        unknowns['OandM'] = 10000.0
+
+class calcLRC(Component):
+    """
+    Calculates LRC (levelized replacement/overhaul cost) for given windfarm layout
+    LRC distributes the cost of major replacements and overhauls over the life of the wind turbine and is expressed in $/kW machine rating.
+    """
+
+    def __init__(self, nTurbines):
+
+        super(calcLRC, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        self.add_param('hubHeight', val=np.zeros(nTurbines), units='m')
+
+        self.add_param('rotorDiameter', val=np.zeros(nTurbines), units='m')
+
+
+        # define output
+        self.add_output('LRC', val=0.0, units='$', desc='Levelized Replacement Cost')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        #calculate LLC
+        unknowns['LRC'] = 10000.0
+
 
 class SpacingComp(Component):
     """
