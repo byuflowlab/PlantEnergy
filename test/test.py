@@ -154,7 +154,7 @@ class TestJensenWrapper(unittest.TestCase):
         prob['Ct_in'] = Ct
         prob['Cp_in'] = Cp
         # prob['model_params:spread_angle'] = 20.0
-        prob['model_params:alpha'] = 0.1
+        # prob['model_params:alpha'] = 0.1
 
         # run the problem
         prob.run()
@@ -354,16 +354,17 @@ class TestGaussWrapper(unittest.TestCase):
 
         # Define flow properties
         nDirections = 1
-        wind_speed = 8.1                                # m/s
+        wind_speed = 8.0                                # m/s
         air_density = 1.1716                            # kg/m^3
         wind_direction = 270.-0.523599*180./np.pi       # deg (N = 0 deg., using direction FROM, as in met-mast data)
         wind_frequency = 1.                             # probability of wind in this direction at this speed
 
         # set up problem
 
-        wake_model_options = None
-        prob = Problem(root=AEPGroup(nTurbines, nDirections, wake_model=gauss_wrapper, wake_model_options=wake_model_options,
-                                     params_IdepVar_func=add_gauss_params_IndepVarComps,
+        wake_model_options = {'nSamples': 0}
+        prob = Problem(root=AEPGroup(nTurbines=nTurbines, nDirections=nDirections, wake_model=gauss_wrapper,
+                                     wake_model_options=wake_model_options, datasize=0, use_rotor_components=False,
+                                     params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=False,
                                      params_IndepVar_args={}))
 
         # initialize problem
@@ -384,12 +385,11 @@ class TestGaussWrapper(unittest.TestCase):
         prob['windFrequencies'] = np.array([wind_frequency])
         prob['Ct_in'] = Ct
         prob['Cp_in'] = Cp
-        prob['model_params:spread_angle'] = 10.
-        prob['model_params:ke'] = 0.052
-        prob['model_params:rotation_offset_angle'] = 2.0
 
         # run the problem
         prob.run()
+
+        print prob['wtVelocity0'], prob['turbineX'], prob['turbineY']
 
         self.prob = prob
 
@@ -397,7 +397,7 @@ class TestGaussWrapper(unittest.TestCase):
         self.assertEqual(self.working_import, True, "gauss_wrapper Import Failed")
 
     def testRun(self):
-        np.testing.assert_allclose(self.prob['wtVelocity0'], np.array([8.1, 8.1, 6.800404, 6.800404, 6.673539, 6.673055]))
+        np.testing.assert_allclose(self.prob['wtVelocity0'], np.array([8., 8., 6.467924, 6.467924, 6.339177, 6.338867]))
 
 
 if __name__ == "__main__":
