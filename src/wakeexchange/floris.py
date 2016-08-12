@@ -256,6 +256,7 @@ class floris_wrapper(Group):
 
         self.direction_id = direction_id
         self.nTurbines = nTurbines
+        nSamples = wake_model_options['nSamples']
 
         self.add('floris_params', FLORISParameters(wake_model_options['use_rotor_components']), promotes=['*'])
 
@@ -263,7 +264,9 @@ class floris_wrapper(Group):
                                         wake_model_options['use_rotor_components'], wake_model_options['nSamples']),
                  promotes=['turbineXw', 'turbineYw', 'yaw%i' % direction_id, 'hubHeight',
                            'rotorDiameter', 'Ct', 'wind_speed', 'axialInduction', 'wtVelocity%i' % direction_id,
-                           'floris_params*', ])
+                           'floris_params*'] if nSamples == 0 else ['turbineXw', 'turbineYw', 'yaw%i' % direction_id, 'hubHeight',
+                           'rotorDiameter', 'Ct', 'wind_speed', 'axialInduction', 'wtVelocity%i' % direction_id,
+                           'floris_params*', 'wsPositionXw', 'wsPositionYw', 'wsPositionZ', 'wsArray%i' % direction_id])
 
 
 # Testing code for development only

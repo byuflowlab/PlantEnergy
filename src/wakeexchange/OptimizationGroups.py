@@ -108,7 +108,6 @@ class OptAEP(Group):
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
                  params_IndepVar_args={'use_rotor_components': False}):
 
-
         super(OptAEP, self).__init__()
 
         if wake_model_options is None:
@@ -119,7 +118,6 @@ class OptAEP(Group):
             nSamples = wake_model_options['nSamples']
         except:
             nSamples = 0
-
 
         if force_fd:
             self.fd_options['force_fd'] = True
