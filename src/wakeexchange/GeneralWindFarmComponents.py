@@ -557,7 +557,7 @@ class SpacingComp(Component):
         nTurbines = turbineX.size
 
         # initialize gradient calculation array
-        dS = np.zeros(((nTurbines-1.)*nTurbines/2., 2*nTurbines))
+        dS = np.zeros((int((nTurbines-1.)*nTurbines/2.), 2*nTurbines))
 
         # set turbine pair counter to zero
         k = 0
