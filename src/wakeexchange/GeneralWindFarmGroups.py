@@ -140,6 +140,7 @@ class AEPGroup(Group):
         self.add('dv2', IndepVarComp('windFrequencies', np.ones(nDirections)), promotes=['*'])
         self.add('dv3', IndepVarComp('turbineX', np.zeros(nTurbines), units='m'), promotes=['*'])
         self.add('dv4', IndepVarComp('turbineY', np.zeros(nTurbines), units='m'), promotes=['*'])
+        self.add('dv4p5', IndepVarComp('hubHeight', np.zeros(nTurbines), units='m'), promotes=['*'])
 
         # add vars to be seen by MPI and gradient calculations
         self.add('dv5', IndepVarComp('rotorDiameter', np.zeros(nTurbines), units='m'), promotes=['*'])
