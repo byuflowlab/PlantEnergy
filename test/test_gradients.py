@@ -45,7 +45,7 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
         yaw = np.random.rand(nTurbines)*60. - 30.
 
         # Define flow properties
-        nDirections = 50
+        nDirections = 4
         windSpeeds = np.random.rand(nDirections)*20        # m/s
         air_density = 1.1716    # kg/m^3
         windDirections = np.random.rand(nDirections)*360.0
@@ -747,13 +747,13 @@ class GradientTestsPower(unittest.TestCase):
         np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
 
-class GradientTestsGeneralComponents(unittest.TestCase):
+class GradientTestsConstraintComponents(unittest.TestCase):
 
     def setUp(self):
 
         nTurbines = 3
         self.rtol = 1E-6
-        self.atol = 1E-6
+        self.atol = 1E-3
 
         np.random.seed(seed=10)
 
@@ -784,7 +784,7 @@ class GradientTestsGeneralComponents(unittest.TestCase):
         yaw = np.random.rand(nTurbines)*60. - 30.
 
         # Define flow properties
-        nDirections = 50
+        nDirections = 5
         windSpeeds = np.random.rand(nDirections)*20        # m/s
         air_density = 1.1716    # kg/m^3
         windDirections = np.random.rand(nDirections)*360.0
@@ -847,12 +847,10 @@ class GradientTestsGeneralComponents(unittest.TestCase):
 
             # provide values for hull constraint
             if prob is prob_polygon:
-                count += 1
-                print(count)
                 prob['boundaryVertices'] = boundaryVertices
                 prob['boundaryNormals'] = boundaryNormals
             elif prob is prob_circle:
-                prob['boundary_center'] = np.array(boundary_center_x, boundary_center_y)
+                prob['boundary_center'] = np.array([boundary_center_x, boundary_center_y])
                 prob['boundary_radius'] = boundary_radius
 
             # run problem
@@ -868,18 +866,18 @@ class GradientTestsGeneralComponents(unittest.TestCase):
 
     def testSpacingCon(self):
 
-        np.testing.assert_allclose(self.J[('sc', 'turbineX')]['rel error'], self.J[('sc', 'turbineX')]['rel error'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('sc', 'turbineY')]['rel error'], self.J[('sc', 'turbineY')]['rel error'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('sc', 'turbineX')]['J_fwd'], self.J[('sc', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('sc', 'turbineY')]['J_fwd'], self.J[('sc', 'turbineY')]['J_fd'], self.rtol, self.atol)
 
     def testBoundaryConPolygon(self):
 
-        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineX')]['rel error'], self.J[('boundaryDistances', 'turbineX')]['rel error'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineY')]['rel error'], self.J[('boundaryDistances', 'turbineY')]['rel error'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineX')]['J_fwd'], self.J[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineY')]['J_fwd'], self.J[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
 
     def testBoundaryConCircle(self):
 
-        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineX')]['rel error'], self.J_circle[('boundaryDistances', 'turbineX')]['rel error'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineY')]['rel error'], self.J_circle[('boundaryDistances', 'turbineY')]['rel error'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineX')]['J_fwd'], self.J_circle[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineY')]['J_fwd'], self.J_circle[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
 
 
 # TODO create gradient tests for all components

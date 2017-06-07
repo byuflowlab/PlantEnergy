@@ -595,22 +595,21 @@ class BoundaryComp(Component):
         self.nTurbines = nTurbines
         self.nVertices = nVertices
         if nVertices > 1:
-            self.type = 'polygon'
+            self.type = type = 'polygon'
         elif nVertices == 1:
-            self.type = 'circle'
+            self.type = type = 'circle'
         else:
             ValueError('nVertices in BoundaryComp must be greater than 0')
 
-        if type is 'polygon':
-            # Explicitly size input arrays
+        if type == 'polygon':
+            #     Explicitly size input arrays
             self.add_param('boundaryVertices', np.zeros([nVertices, 2]), units='m', pass_by_obj=True,
                            desc="vertices of the convex hull CCW in order s.t. boundaryVertices[i] -> first point of face"
                                 "for unit_normals[i]")
             self.add_param('boundaryNormals', np.zeros([nVertices, 2]), pass_by_obj=True,
                            desc="unit normal vector for each boundary face CCW where boundaryVertices[i] is "
                                 "the first point of the corresponding face")
-        elif type is 'circle':
-            self.nVertices = 1
+        elif type == 'circle':
             self.add_param('boundary_radius', val=1000., units='m', pass_by_obj=True, desc='radius of wind farm boundary')
             self.add_param('boundary_center', val=np.array([0., 0.]), units='m', pass_by_obj=True,
                            desc='x and y positions of circular wind farm boundary center')
@@ -633,7 +632,7 @@ class BoundaryComp(Component):
         turbineX = params['turbineX']
         turbineY = params['turbineY']
 
-        if self.type is 'polygon':
+        if self.type == 'polygon':
             # put locations in correct arrangement for calculations
             locations = np.zeros([self.nTurbines, 2])
             for i in range(0, self.nTurbines):
@@ -645,11 +644,11 @@ class BoundaryComp(Component):
             unknowns['boundaryDistances'] = calculate_distance(locations,
                                                                params['boundaryVertices'], params['boundaryNormals'])
 
-        elif self.type is 'circle':
+        elif self.type == 'circle':
             xc = params['boundary_center'][0]
             yc = params['boundary_center'][1]
             r = params['boundary_radius']
-            unknowns['boundaryDistances'] = np.sqrt(np.power((turbineX - xc), 2) - np.power((turbineY - yc), 2)) - r
+            unknowns['boundaryDistances'] = r - np.sqrt(np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
 
         else:
             ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
@@ -657,9 +656,9 @@ class BoundaryComp(Component):
 
     def linearize(self, params, unknowns, resids):
 
-        unit_normals = params['boundaryNormals']
+        if self.type == 'polygon':
+            unit_normals = params['boundaryNormals']
 
-        if self.type is 'polygon':
             # initialize array to hold distances from each point to each face
             dfaceDistance_dx = np.zeros([self.nTurbines*self.nVertices, self.nTurbines])
             dfaceDistance_dy = np.zeros([self.nTurbines*self.nVertices, self.nTurbines])
@@ -680,17 +679,19 @@ class BoundaryComp(Component):
                     dfaceDistance_dx[i*self.nVertices+j, i] = np.vdot(ddistanceVec_dx, unit_normals[j])
                     dfaceDistance_dy[i*self.nVertices+j, i] = np.vdot(ddistanceVec_dy, unit_normals[j])
 
-        elif self.type is 'circle':
+        elif self.type == 'circle':
             turbineX = params['turbineX']
             turbineY = params['turbineY']
             xc = params['boundary_center'][0]
             yc = params['boundary_center'][1]
             r = params['boundary_radius']
 
-            common_term = 0.5*np.power((np.power((turbineX - xc), 2) - np.power((turbineY - yc), 2)), -0.5)
-            dfaceDistance_dx = common_term*2.*(turbineX - xc)
-            dfaceDistance_dy = common_term*2.*(turbineY - yc)
-
+            common_term = -0.5*np.power((np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2)), -0.5)
+            A = np.eye(self.nTurbines, self.nTurbines)
+            B = common_term * 2. * (turbineX - xc)
+            dfaceDistance_dx = A*B
+            B = common_term * 2. * (turbineY - yc)
+            dfaceDistance_dy = A*B
         else:
             ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
                        % (type))
