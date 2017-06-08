@@ -112,10 +112,10 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
 
     def testObj(self):
 
-        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['rel error'], self.J[('obj', 'turbineX')]['rel error'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['rel error'], self.J[('obj', 'turbineY')]['rel error'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'], self.J[('obj', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['J_fwd'], self.J[('obj', 'turbineY')]['J_fd'], self.rtol, self.atol)
         for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['rel error'], self.J[('obj', 'yaw%i' % dir)]['rel error'], self.rtol, self.atol)
+            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['J_fwd'], self.J[('obj', 'yaw%i' % dir)]['J_fd'], self.rtol, self.atol)
 
 
 class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
@@ -330,10 +330,10 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
 
     def testObj(self):
 
-        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['rel error'], self.J[('obj', 'turbineX')]['rel error'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['rel error'], self.J[('obj', 'turbineY')]['rel error'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'], self.J[('obj', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['J_fwd'], self.J[('obj', 'turbineY')]['J_fd'], self.rtol, self.atol)
         for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['rel error'], self.J[('obj', 'yaw%i' % dir)]['rel error'], self.rtol, self.atol)
+            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['J_fwd'], self.J[('obj', 'yaw%i' % dir)]['J_fd'], self.rtol, self.atol)
 
 
 

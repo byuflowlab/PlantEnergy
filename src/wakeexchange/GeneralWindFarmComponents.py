@@ -648,7 +648,7 @@ class BoundaryComp(Component):
             xc = params['boundary_center'][0]
             yc = params['boundary_center'][1]
             r = params['boundary_radius']
-            unknowns['boundaryDistances'] = r - np.sqrt(np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
+            unknowns['boundaryDistances'] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
 
         else:
             ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
@@ -684,14 +684,13 @@ class BoundaryComp(Component):
             turbineY = params['turbineY']
             xc = params['boundary_center'][0]
             yc = params['boundary_center'][1]
-            r = params['boundary_radius']
 
-            common_term = -0.5*np.power((np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2)), -0.5)
             A = np.eye(self.nTurbines, self.nTurbines)
-            B = common_term * 2. * (turbineX - xc)
+            B =  - 2. * (turbineX - xc)
+            C =  - 2. * (turbineY - yc)
+
             dfaceDistance_dx = A*B
-            B = common_term * 2. * (turbineY - yc)
-            dfaceDistance_dy = A*B
+            dfaceDistance_dy = A*C
         else:
             ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
                        % (type))
