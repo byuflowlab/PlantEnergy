@@ -13,6 +13,40 @@ import cProfile
 
 import sys
 
+def round_farm(rotor_diameter, center, radius, min_spacing=2.):
+
+    # normalize inputs
+    radius /= rotor_diameter
+    center /= rotor_diameter
+
+    # calculate how many circles can be fit in the wind farm area
+    nCircles = np.floor(radius/min_spacing)
+    radii = np.linspace(radius/nCircles, radius, nCircles)
+    alpha_mins = 2.*np.arcsin(min_spacing/(2.*radii))
+    nTurbines_circles = np.floor(2. * np.pi / alpha_mins)
+
+    nTurbines = int(np.sum(nTurbines_circles))
+
+    alphas = 2.*np.pi/nTurbines_circles
+
+    turbineX = np.zeros(nTurbines)
+    turbineY = np.zeros(nTurbines)
+
+    index = 0
+
+    for circle in np.arange(0, int(nCircles)):
+        for turb in np.arange(0, int(nTurbines_circles[circle])):
+            angle = alphas[circle]*turb
+            w = radii[circle]*np.cos(angle)
+            h = radii[circle]*np.sin(angle)
+            x = center[0] + w
+            y = center[1] + h
+            turbineX[index] = x*rotor_diameter
+            turbineY[index] = y*rotor_diameter
+            index += 1
+
+    return turbineX, turbineY
+
 if __name__ == "__main__":
 
     ######################### for MPI functionality #########################
@@ -35,7 +69,7 @@ if __name__ == "__main__":
 
     prob = Problem(impl=impl)
 
-    size = 30  # number of processors (and number of wind directions to run)
+    size = 3  # number of processors (and number of wind directions to run)
 
     #########################################################################
     # define turbine size
@@ -46,25 +80,32 @@ if __name__ == "__main__":
     # turbineX = np.array([1164.7, 947.2,  1682.4, 1464.9, 1982.6, 2200.1])   # m
     # turbineY = np.array([1024.7, 1335.3, 1387.2, 1697.8, 2060.3, 1749.7])   # m
 
-    # Scaling grid case
-    nRows = 3  # number of rows and columns in grid
-    spacing = 5  # turbine grid spacing in diameters
+    # # Scaling grid case
+    # nRows = 3  # number of rows and columns in grid
+    # spacing = 3.5  # turbine grid spacing in diameters
+    #
+    # # Set up position arrays
+    # points = np.linspace(start=spacing * rotor_diameter, stop=nRows * spacing * rotor_diameter, num=nRows)
+    # xpoints, ypoints = np.meshgrid(points, points)
+    # turbineX = np.ndarray.flatten(xpoints)
+    # turbineY = np.ndarray.flatten(ypoints)
 
-    # Set up position arrays
-    points = np.linspace(start=spacing * rotor_diameter, stop=nRows * spacing * rotor_diameter, num=nRows)
-    xpoints, ypoints = np.meshgrid(points, points)
-    turbineX = np.ndarray.flatten(xpoints)
-    turbineY = np.ndarray.flatten(ypoints)
+    # scaling circle case
+    center = np.array([2000., 2000.])
+    radius = 5. * rotor_diameter
+    min_spacing = 4.
+
+    turbineX, turbineY = round_farm(rotor_diameter, np.copy(center), np.copy(radius), min_spacing=2.)
 
     # set values for circular boundary constraint
     nVertices = 1
-    boundary_center_x = np.average(turbineX)
-    boundary_center_y = np.average(turbineY)
+    boundary_center_x = center[0]
+    boundary_center_y = center[1]
     xmax = np.max(turbineX)
     ymax = np.max(turbineY)
     xmin = np.min(turbineX)
     ymin = np.min(turbineY)
-    boundary_radius = 0.5 * np.sqrt((xmax - xmin) ** 2 + (ymax - ymin) ** 2)+0.5*rotor_diameter
+    boundary_radius = 0.5 * (xmax - xmin)
 
     # initialize input variable arrays
     nTurbs = turbineX.size
@@ -105,26 +146,24 @@ if __name__ == "__main__":
     # set up optimizer
     prob.driver = pyOptSparseDriver()
     prob.driver.options['optimizer'] = 'SNOPT'
-    prob.driver.add_objective('obj', scaler=1E-3)
-    prob.driver.options['gradient method'] = 'snopt_fd'
+    prob.driver.add_objective('obj', scaler=1E-5)
+    # prob.driver.options['gradient method'] = 'snopt_fd'
 
     # set optimizer options
     prob.driver.opt_settings['Verify level'] = 3
     prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
     prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
     # prob.driver.opt_settings['Major iterations limit'] = 1000
-    bm = 1
+
     # select design variables
-    # prob.driver.add_desvar('turbineX', lower=np.ones(nTurbs)*min(turbineX), upper=np.ones(nTurbs)*max(turbineX)*bm, scaler=1)
-    # prob.driver.add_desvar('turbineY', lower=np.ones(nTurbs)*min(turbineY), upper=np.ones(nTurbs)*max(turbineY)*bm, scaler=1)
     prob.driver.add_desvar('turbineX', scaler=1)
     prob.driver.add_desvar('turbineY', scaler=1)
-    for direction_id in range(0, windDirections.size):
-        prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
+    # for direction_id in range(0, windDirections.size):
+    #     prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
 
     # add constraints
     prob.driver.add_constraint('sc', lower=np.zeros(int(((nTurbs - 1.) * nTurbs / 2.))), scaler=1E-3)
-    prob.driver.add_constraint('boundaryDistances', lower=np.zeros(1 * turbineX.size)+(rotor_diameter/2.)**2, scaler=1E1)
+    prob.driver.add_constraint('boundaryDistances', lower=(np.zeros(1 * turbineX.size)), scaler=1E1)
 
     prob.root.ln_solver.options['single_voi_relevance_reduction'] = True
 
