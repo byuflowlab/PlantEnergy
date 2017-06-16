@@ -25,7 +25,7 @@ def round_farm(rotor_diameter, center, radius, min_spacing=2.):
     alpha_mins = 2.*np.arcsin(min_spacing/(2.*radii))
     nTurbines_circles = np.floor(2. * np.pi / alpha_mins)
 
-    nTurbines = int(np.sum(nTurbines_circles))
+    nTurbines = int(np.sum(nTurbines_circles))+1
 
     alphas = 2.*np.pi/nTurbines_circles
 
@@ -33,7 +33,9 @@ def round_farm(rotor_diameter, center, radius, min_spacing=2.):
     turbineY = np.zeros(nTurbines)
 
     index = 0
-
+    turbineX[index] = center[0]
+    turbineY[index] = center[1]
+    index += 1
     for circle in np.arange(0, int(nCircles)):
         for turb in np.arange(0, int(nTurbines_circles[circle])):
             angle = alphas[circle]*turb
@@ -41,11 +43,11 @@ def round_farm(rotor_diameter, center, radius, min_spacing=2.):
             h = radii[circle]*np.sin(angle)
             x = center[0] + w
             y = center[1] + h
-            turbineX[index] = x*rotor_diameter
-            turbineY[index] = y*rotor_diameter
+            turbineX[index] = x
+            turbineY[index] = y
             index += 1
 
-    return turbineX, turbineY
+    return turbineX*rotor_diameter, turbineY*rotor_diameter
 
 if __name__ == "__main__":
 
@@ -146,7 +148,7 @@ if __name__ == "__main__":
     # set up optimizer
     prob.driver = pyOptSparseDriver()
     prob.driver.options['optimizer'] = 'SNOPT'
-    prob.driver.add_objective('obj', scaler=1E-5)
+    prob.driver.add_objective('obj', scaler=1E0)
     # prob.driver.options['gradient method'] = 'snopt_fd'
 
     # set optimizer options
@@ -156,14 +158,14 @@ if __name__ == "__main__":
     # prob.driver.opt_settings['Major iterations limit'] = 1000
 
     # select design variables
-    prob.driver.add_desvar('turbineX', scaler=1)
-    prob.driver.add_desvar('turbineY', scaler=1)
+    prob.driver.add_desvar('turbineX', scaler=1E3)
+    prob.driver.add_desvar('turbineY', scaler=1E3)
     # for direction_id in range(0, windDirections.size):
     #     prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
 
     # add constraints
-    prob.driver.add_constraint('sc', lower=np.zeros(int(((nTurbs - 1.) * nTurbs / 2.))), scaler=1E-3)
-    prob.driver.add_constraint('boundaryDistances', lower=(np.zeros(1 * turbineX.size)), scaler=1E1)
+    prob.driver.add_constraint('sc', lower=np.zeros(int(((nTurbs - 1.) * nTurbs / 2.))), scaler=1E3)
+    prob.driver.add_constraint('boundaryDistances', lower=(np.zeros(1 * turbineX.size)), scaler=1E3)
 
     prob.root.ln_solver.options['single_voi_relevance_reduction'] = True
 
