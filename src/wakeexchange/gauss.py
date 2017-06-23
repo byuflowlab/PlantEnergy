@@ -23,7 +23,8 @@ def add_gauss_params_IndepVarComps(openmdao_object):
     openmdao_object.add('bp7', IndepVarComp('model_params:I', 0.075, pass_by_object=True))
     openmdao_object.add('bp8', IndepVarComp('model_params:wake_combination_method', 0, pass_by_object=True))
     openmdao_object.add('bp9', IndepVarComp('model_params:ti_calculation_method', 0, pass_by_object=True))
-    openmdao_object.add('bp10', IndepVarComp('model_params:sort', True, pass_by_object=True))
+    openmdao_object.add('bp10', IndepVarComp('model_params:calc_k_star', True, pass_by_object=True))
+    openmdao_object.add('bp11', IndepVarComp('model_params:sort', True, pass_by_object=True))
     # openmdao_object.add('bp8', IndepVarComp('model_params:yaw_mode', val='bastankhah', pass_by_object=True))
     # openmdao_object.add('bp9', IndepVarComp('model_params:spread_mode', val='bastankhah', pass_by_object=True))
 
