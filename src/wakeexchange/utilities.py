@@ -881,6 +881,42 @@ def hermite_spline(x, x0, x1, y0, dy0, y1, dy1):
 
     return y, dy_dx
 
+def sunflower_points(n, alpha=1.0):
+    # this function generates n points within a circle in a sunflower seed pattern
+    # the code is based on the example found at
+    # https://stackoverflow.com/questions/28567166/uniformly-distribute-x-points-inside-a-circle
+
+    def radius(k, n, b):
+        if (k + 1) > n - b:
+            r = 1. # put on the boundary
+        else:
+            r = np.sqrt((k + 1.) - 1. / 2.) / np.sqrt(n - (b + 1.) / 2.)  # apply squareroot
+
+        return r
+
+    x = np.zeros(n)
+    y = np.zeros(n)
+
+    b = np.round(alpha * np.sqrt(n)) # number of boundary points
+
+    phi = (np.sqrt(5.) + 1.) / 2.  # golden ratio
+
+    for k in np.arange(0, n):
+
+        r = radius(k, n, b)
+
+        theta = 2. * np.pi * (k+1) / phi**2
+
+        x[k] = r * np.cos(theta)
+        y[k] = r * np.sin(theta)
+
+    return x, y
+
+
+
+
+
+
 
 # if __name__ == '__main__':
 

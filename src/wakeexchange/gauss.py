@@ -6,6 +6,7 @@ Brigham Young University
 
 from openmdao.api import IndepVarComp, Group
 from gaussianwake.gaussianwake import GaussianWake
+import numpy as np
 
 
 def add_gauss_params_IndepVarComps(openmdao_object):
@@ -23,8 +24,12 @@ def add_gauss_params_IndepVarComps(openmdao_object):
     openmdao_object.add('bp7', IndepVarComp('model_params:I', 0.075, pass_by_object=True))
     openmdao_object.add('bp8', IndepVarComp('model_params:wake_combination_method', 0, pass_by_object=True))
     openmdao_object.add('bp9', IndepVarComp('model_params:ti_calculation_method', 0, pass_by_object=True))
-    openmdao_object.add('bp10', IndepVarComp('model_params:calc_k_star', True, pass_by_object=True))
+    openmdao_object.add('bp10', IndepVarComp('model_params:calc_k_star', False, pass_by_object=True))
     openmdao_object.add('bp11', IndepVarComp('model_params:sort', True, pass_by_object=True))
+    openmdao_object.add('bp12', IndepVarComp('model_params:RotorPointsY', val=np.array([0.0]), pass_by_object=True,
+                   desc='rotor swept area sampling Y points centered at (y,z)=(0,0) normalized by rotor radius'))
+    openmdao_object.add('bp13', IndepVarComp('model_params:RotorPointsZ', val=np.array([0.0]), pass_by_object=True,
+                   desc='rotor swept area sampling Z points centered at (y,z)=(0,0) normalized by rotor radius'))
     # openmdao_object.add('bp8', IndepVarComp('model_params:yaw_mode', val='bastankhah', pass_by_object=True))
     # openmdao_object.add('bp9', IndepVarComp('model_params:spread_mode', val='bastankhah', pass_by_object=True))
 
