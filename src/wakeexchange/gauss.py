@@ -30,6 +30,13 @@ def add_gauss_params_IndepVarComps(openmdao_object):
                    desc='rotor swept area sampling Y points centered at (y,z)=(0,0) normalized by rotor radius'))
     openmdao_object.add('bp13', IndepVarComp('model_params:RotorPointsZ', val=np.array([0.0]), pass_by_object=True,
                    desc='rotor swept area sampling Z points centered at (y,z)=(0,0) normalized by rotor radius'))
+    openmdao_object.add('bp14', IndepVarComp('model_params:z_ref', val=80.0, pass_by_object=True,
+                   desc='wind speed measurement height'))
+    openmdao_object.add('bp15', IndepVarComp('model_params:z_0', val=0.0, pass_by_object=True,
+                   desc='ground height'))
+    openmdao_object.add('bp16', IndepVarComp('model_params:shear_exp', val=0.15, pass_by_object=True,
+                   desc='wind shear calculation exponent'))
+
     # openmdao_object.add('bp8', IndepVarComp('model_params:yaw_mode', val='bastankhah', pass_by_object=True))
     # openmdao_object.add('bp9', IndepVarComp('model_params:spread_mode', val='bastankhah', pass_by_object=True))
 
