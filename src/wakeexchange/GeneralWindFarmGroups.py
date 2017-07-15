@@ -6,7 +6,10 @@ from openmdao.core.mpi_wrap import MPI
 if MPI:
     from openmdao.api import PetscKSP
 
-from floris import floris_wrapper, add_floris_params_IndepVarComps
+from wakeexchange.floris import floris_wrapper, add_floris_params_IndepVarComps
+from wakeexchange.gauss import add_gauss_params_IndepVarComps
+
+
 
 from GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, MUX, WindFarmAEP, DeMUX, \
     CPCT_Interpolate_Gradients_Smooth, WindDirectionPower, add_gen_params_IdepVarComps, \
@@ -60,12 +63,17 @@ class DirectionGroup(Group):
     """
 
     def __init__(self, nTurbines, direction_id=0, use_rotor_components=False, datasize=0,
-                 differentiable=True, add_IdepVarComps=True, nSamples=0, wake_model=floris_wrapper,
-                 wake_model_options=None):
+                 differentiable=True, add_IdepVarComps=True, params_IdepVar_func=add_floris_params_IndepVarComps,
+                 params_IndepVar_args=None, nSamples=0, wake_model=floris_wrapper, wake_model_options=None):
         super(DirectionGroup, self).__init__()
 
         if add_IdepVarComps:
-            add_floris_params_IndepVarComps(self, use_rotor_components=use_rotor_components)
+            if params_IdepVar_func is not None:
+                if (params_IndepVar_args is None) and (wake_model is floris_wrapper):
+                    params_IndepVar_args = {'use_rotor_components': False}
+                elif params_IndepVar_args is None:
+                    params_IndepVar_args = {}
+                params_IdepVar_func(self, **params_IndepVar_args)
             add_gen_params_IdepVarComps(self, datasize=datasize)
 
         self.add('directionConversion', WindFrame(nTurbines, differentiable=differentiable, nSamples=nSamples),
@@ -101,7 +109,7 @@ class DirectionGroup(Group):
         self.add('powerComp', WindDirectionPower(nTurbines=nTurbines, direction_id=direction_id, differentiable=True,
                                                  use_rotor_components=use_rotor_components),
                  promotes=['air_density', 'generatorEfficiency', 'rotorDiameter',
-                           'wtVelocity%i' % direction_id,
+                           'wtVelocity%i' % direction_id, 'rated_power',
                            'wtPower%i' % direction_id, 'dir_power%i' % direction_id])
 
         if use_rotor_components:
@@ -122,6 +130,8 @@ class AEPGroup(Group):
                  params_IndepVar_args=None):
 
         super(AEPGroup, self).__init__()
+
+        print "initializing AEPGroup group"
 
         if wake_model_options is None:
             wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
@@ -147,9 +157,11 @@ class AEPGroup(Group):
         self.add('dv6', IndepVarComp('axialInduction', np.zeros(nTurbines)), promotes=['*'])
         self.add('dv7', IndepVarComp('generatorEfficiency', np.zeros(nTurbines)), promotes=['*'])
         self.add('dv8', IndepVarComp('air_density', val=1.1716, units='kg/(m*m*m)'), promotes=['*'])
+        self.add('dv9', IndepVarComp('rated_power', np.ones(nTurbines)*5000., units='kW',
+                       desc='rated power for each turbine', pass_by_obj=True), promotes=['*'])
         if not use_rotor_components:
-            self.add('dv9', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])
-            self.add('dv10', IndepVarComp('Cp_in', np.zeros(nTurbines)), promotes=['*'])
+            self.add('dv10', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])
+            self.add('dv11', IndepVarComp('Cp_in', np.zeros(nTurbines)), promotes=['*'])
 
         # add variable tree IndepVarComps
         add_gen_params_IdepVarComps(self, datasize=datasize)
@@ -166,6 +178,7 @@ class AEPGroup(Group):
         self.add('windDirectionsDeMUX', DeMUX(nDirections, units=direction_units))
         self.add('windSpeedsDeMUX', DeMUX(nDirections, units=wind_speed_units))
 
+        print "initializing parallel groups"
         pg = self.add('all_directions', ParallelGroup(), promotes=['*'])
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections):
@@ -177,12 +190,12 @@ class AEPGroup(Group):
                                       wake_model=wake_model, wake_model_options=wake_model_options),
                        promotes=(['gen_params:*', 'model_params:*', 'air_density',
                                   'axialInduction', 'generatorEfficiency', 'turbineX', 'turbineY', 'hubHeight',
-                                  'yaw%i' % direction_id, 'rotorDiameter', 'wtVelocity%i' % direction_id,
+                                  'yaw%i' % direction_id, 'rotorDiameter', 'rated_power', 'wtVelocity%i' % direction_id,
                                   'wtPower%i' % direction_id, 'dir_power%i' % direction_id]
                                  if (nSamples == 0) else
                                  ['gen_params:*', 'model_params:*', 'air_density',
                                   'axialInduction', 'generatorEfficiency', 'turbineX', 'turbineY', 'hubHeight',
-                                  'yaw%i' % direction_id, 'rotorDiameter', 'wsPositionX', 'wsPositionY',
+                                  'yaw%i' % direction_id, 'rotorDiameter', 'rated_power', 'wsPositionX', 'wsPositionY',
                                   'wsPositionZ', 'wtVelocity%i' % direction_id,
                                   'wtPower%i' % direction_id, 'dir_power%i' % direction_id, 'wsArray%i' % direction_id]))
         else:
@@ -195,15 +208,16 @@ class AEPGroup(Group):
                                       wake_model=wake_model, wake_model_options=wake_model_options),
                        promotes=(['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
-                                  'hubHeight', 'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
+                                  'hubHeight', 'rated_power', 'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
                                   'dir_power%i' % direction_id]
                                  if (nSamples == 0) else
                                  ['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
-                                  'hubHeight',  'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                                  'hubHeight',  'rated_power', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                   'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
                                   'dir_power%i' % direction_id, 'wsArray%i' % direction_id]))
 
+        print "parallel groups initialized"
         self.add('powerMUX', MUX(nDirections, units=power_units))
         self.add('AEPcomp', WindFarmAEP(nDirections), promotes=['*'])
 

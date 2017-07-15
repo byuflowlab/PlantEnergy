@@ -108,6 +108,7 @@ class OptAEP(Group):
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
                  params_IndepVar_args={'use_rotor_components': False}):
 
+        print "initializing OptAEP Group"
         super(OptAEP, self).__init__()
 
         if wake_model_options is None:
@@ -140,6 +141,10 @@ class OptAEP(Group):
         if nVertices > 0:
             # add component that enforces a convex hull wind farm boundary
             self.add('boundary_con', BoundaryComp(nVertices=nVertices, nTurbines=nTurbines), promotes=['*'])
+            self.add('bv0', IndepVarComp('boundary_radius', val=1000., units='m',
+                                         pass_by_obj=True, desc='radius of wind farm boundary'), promotes=['*'])
+            self.add('bv1', IndepVarComp('boundary_center', val=np.array([0., 0.]), units='m', pass_by_obj=True,
+                                         desc='x and y positions of circular wind farm boundary center'), promotes=['*'])
 
         # ##### add constraint definitions
         self.add('spacing_con', ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
@@ -147,6 +152,8 @@ class OptAEP(Group):
                                          sc=np.zeros(int(((nTurbines-1.)*nTurbines/2.))),
                                          wtSeparationSquared=np.zeros(int(((nTurbines-1.)*nTurbines/2.)))),
                  promotes=['*'])
+        self.add('sv0', IndepVarComp('minSpacing', val=minSpacing, units='m',
+                 pass_by_obj=True, desc='minimum allowable spacing between wind turbines'), promotes=['*'])
 
         # add objective component
         self.add('obj_comp', ExecComp('obj = -1.*AEP', AEP=0.0), promotes=['*'])

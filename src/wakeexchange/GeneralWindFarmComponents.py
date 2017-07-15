@@ -20,6 +20,8 @@ def add_gen_params_IdepVarComps(openmdao_group, datasize):
                                   pass_by_obj=True), promotes=['*'])
     openmdao_group.add('gp5', IndepVarComp('gen_params:CTcorrected', False,
                                   pass_by_obj=True), promotes=['*'])
+    openmdao_group.add('gp6', IndepVarComp('gen_params:AEP_method', 'none',
+                                           pass_by_obj=True), promotes=['*'])
 
 
 class WindFrame(Component):
@@ -251,8 +253,8 @@ class WindFarmAEP(Component):
 
         # set finite difference options (fd used for testing only)
         self.deriv_options['check_form'] = 'central'
-        self.deriv_options['check_step_size'] = 1.0e-5
-        self.deriv_options['check_step_calc'] = 'relative'
+        self.deriv_options['check_step_size'] = 1.0e-6
+        # self.deriv_options['check_step_calc'] = 'relative'
 
         # define inputs
         self.add_param('dirPowers', np.zeros(nDirections), units='kW',
@@ -260,6 +262,8 @@ class WindFarmAEP(Component):
         self.add_param('windFrequencies', np.zeros(nDirections),
                        desc='vector containing the weighted frequency of wind at each direction ccw from east using '
                             'direction too')
+        self.add_param('gen_params:AEP_method', val='none', pass_by_object=True,
+                       desc='select method with which aep is adjusted for optimization')
 
         # define output
         self.add_output('AEP', val=0.0, units='kWh', desc='total annual energy output of wind farm')
@@ -272,6 +276,7 @@ class WindFarmAEP(Component):
         # locally name input values
         dirPowers = params['dirPowers']
         windFrequencies = params['windFrequencies']
+        AEP_method = params['gen_params:AEP_method']
 
         # number of hours in a year
         hours = 8760.0
@@ -280,8 +285,14 @@ class WindFarmAEP(Component):
         AEP = sum(dirPowers*windFrequencies)*hours
 
         # promote AEP result to class attribute
-        unknowns['AEP'] = AEP
-
+        if AEP_method == 'none':
+            unknowns['AEP'] = AEP
+        elif AEP_method =='log':
+            unknowns['AEP'] = np.log(AEP)
+        elif AEP_method == 'inverse':
+            unknowns['AEP'] = (AEP)**(-1)
+        else:
+            raise ValueError('AEP_method must be one of ["none","log","inverse"]')
         # print AEP
 
         # increase objective function call count
@@ -291,17 +302,26 @@ class WindFarmAEP(Component):
     def linearize(self, params, unknowns, resids):
 
         # # print 'entering AEP - provideJ'
+        AEP_method = params['gen_params:AEP_method']
 
         # assign params to local variables
         windFrequencies = params['windFrequencies']
-        # dirPowers = params['dirPowers']
+        dirPowers = params['dirPowers']
         nDirs = np.size(windFrequencies)
 
         # number of hours in a year
         hours = 8760.0
 
         # calculate the derivative of outputs w.r.t. the power in each wind direction
-        dAEP_dpower = np.ones(nDirs)*windFrequencies*hours
+        if AEP_method == 'none':
+            dAEP_dpower = np.ones(nDirs) * windFrequencies * hours
+        elif AEP_method =='log':
+            dAEP_dpower = dirPowers**(-1.)
+        elif AEP_method == 'inverse':
+            dAEP_dpower = -(hours*windFrequencies*dirPowers**2)**(-1)
+        else:
+            raise ValueError('AEP_method must be one of ["none","log","inverse"]')
+
 
         # initialize Jacobian dict
         J = {}

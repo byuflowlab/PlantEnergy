@@ -230,8 +230,8 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
     def setUp(self):
 
         nTurbines = 3
-        self.rtol = 1E-6
-        self.atol = 1E-6
+        self.rtol = 1E-4
+        self.atol = 1E-2
 
         np.random.seed(seed=10)
 
@@ -277,7 +277,7 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         # set up optimizer
         # prob.driver = pyOptSparseDriver()
         # prob.driver.options['optimizer'] = 'SNOPT'
-        prob.driver.add_objective('obj', scaler=1E-5)
+        prob.driver.add_objective('obj', scaler=1)
 
         # set optimizer options
         # prob.driver.opt_settings['Verify level'] = 3
@@ -318,6 +318,10 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         # provide values for hull constraint
         prob['boundaryVertices'] = boundaryVertices
         prob['boundaryNormals'] = boundaryNormals
+
+        prob['AEP_method'] = 'none'
+        # prob['AEP_method'] = 'log'
+        # prob['AEP_method'] = 'inverse'
 
         # run problem
         prob.run()
@@ -418,6 +422,7 @@ class GradientTestsGauss(unittest.TestCase):
         #########################################################################
         # define turbine size
         rotor_diameter = 126.4  # (m)
+        hub_height = 90.  # (m)
 
         # define turbine locations in global reference frame
         # original example case
@@ -427,8 +432,8 @@ class GradientTestsGauss(unittest.TestCase):
         # Scaling grid case
         nRows = 2  # number of rows and columns in grid
         # spacing = 2.1436  # turbine grid spacing in diameters
-        spacing = .001  # turbine grid spacing in diameters
-        print(spacing*rotor_diameter)
+        spacing = 5.  # turbine grid spacing in diameters
+        # print(spacing*rotor_diameter)
         # Set up position arrays
         points = np.linspace(start=spacing * rotor_diameter, stop=nRows * spacing * rotor_diameter, num=nRows)
         xpoints, ypoints = np.meshgrid(points, points)
@@ -438,6 +443,7 @@ class GradientTestsGauss(unittest.TestCase):
         # initialize input variable arrays
         nTurbs = turbineX.size
         rotorDiameter = np.zeros(nTurbs)
+        hubHeight = np.zeros(nTurbs)
         axialInduction = np.zeros(nTurbs)
         Ct = np.zeros(nTurbs)
         Cp = np.zeros(nTurbs)
@@ -448,6 +454,7 @@ class GradientTestsGauss(unittest.TestCase):
         # define initial values
         for turbI in range(0, nTurbs):
             rotorDiameter[turbI] = rotor_diameter  # m
+            hubHeight[turbI] = hub_height  # m
             axialInduction[turbI] = 1.0 / 3.0
             Ct[turbI] = 4.0 * axialInduction[turbI] * (1.0 - axialInduction[turbI])
             Cp[turbI] = 0.7737 / 0.944 * 4.0 * 1.0 / 3.0 * np.power((1 - 1.0 / 3.0), 2)
@@ -501,6 +508,7 @@ class GradientTestsGauss(unittest.TestCase):
         # assign initial values to design variables
         prob['turbineX'] = turbineX
         prob['turbineY'] = turbineY
+        prob['hubHeight'] = hubHeight
         for direction_id in range(0, windDirections.size):
             prob['yaw%i' % direction_id] = yaw
 
@@ -522,7 +530,7 @@ class GradientTestsGauss(unittest.TestCase):
 
         # print self.J
 
-    def testGaussGrads_wtVelocity0(self):
+    def testGaussGrads_wtVelocity0_turbineXw(self):
 
         # np.testing.assert_allclose(self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fwd'], self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fd'], self.rtol, self.atol)
         # np.testing.assert_allclose(self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fwd'], self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fd'], self.rtol, self.atol)
@@ -530,10 +538,18 @@ class GradientTestsGauss(unittest.TestCase):
         # np.testing.assert_allclose(self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fwd'], self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fd'], self.rtol, self.atol)
         # np.testing.assert_allclose(self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fwd'], self.J['all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fd'], self.rtol, self.atol)
         #
-        # np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fd'], self.rtol, self.atol)
+
+    def testGaussGrads_wtVelocity0_turbineYw(self):
         np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fd'], self.rtol, self.atol)
+
+    def testGaussGrads_wtVelocity0_rotorDiameter(self):
         np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'rotorDiameter')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
+
+    def testGaussGrads_wtVelocity0_yaw0(self):
         np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fd'], self.rtol, self.atol)
+
+    def testGaussGrads_wtVelocity0_hubHeight(self):
         np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fd'], self.rtol, self.atol)
 
 
@@ -747,13 +763,14 @@ class GradientTestsPower(unittest.TestCase):
         np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
 
+
 class GradientTestsConstraintComponents(unittest.TestCase):
 
     def setUp(self):
 
         nTurbines = 3
         self.rtol = 1E-6
-        self.atol = 1E-3
+        self.atol = 1E-6
 
         np.random.seed(seed=10)
 
@@ -811,11 +828,11 @@ class GradientTestsConstraintComponents(unittest.TestCase):
             # set up optimizer
             # prob.driver = pyOptSparseDriver()
             # prob.driver.options['optimizer'] = 'SNOPT'
-            prob.driver.add_objective('obj', scaler=1E-5)
+            prob.driver.add_objective('obj', scaler=1E-3)
 
             # select design variables
-            prob.driver.add_desvar('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1.0)
-            prob.driver.add_desvar('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1.0)
+            prob.driver.add_desvar('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1E3)
+            prob.driver.add_desvar('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1E3)
             # prob.driver.add_desvar('hubHeight', lower=np.ones(nTurbines)*0.0, upper=np.ones(nTurbines)*120., scaler=1.0)
             for direction_id in range(0, windDirections.size):
                 prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1.0)
@@ -823,9 +840,9 @@ class GradientTestsConstraintComponents(unittest.TestCase):
             # add constraints
             prob.driver.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
             if prob is prob_polygon:
-                prob.driver.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1.0)
+                prob.driver.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1E3)
             elif prob is prob_circle:
-                prob.driver.add_constraint('boundaryDistances', lower=np.zeros(1 * nTurbines), scaler=1.0)
+                prob.driver.add_constraint('boundaryDistances', lower=np.zeros(1 * nTurbines), scaler=1E3)
 
             # initialize problem
             prob.setup()
@@ -878,6 +895,21 @@ class GradientTestsConstraintComponents(unittest.TestCase):
 
         np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineX')]['J_fwd'], self.J_circle[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineY')]['J_fwd'], self.J_circle[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
+
+    def testSpacingConRev(self):
+
+        np.testing.assert_allclose(self.J[('sc', 'turbineX')]['J_rev'], self.J[('sc', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('sc', 'turbineY')]['J_rev'], self.J[('sc', 'turbineY')]['J_fd'], self.rtol, self.atol)
+
+    def testBoundaryConPolygonRev(self):
+
+        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineX')]['J_rev'], self.J[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineY')]['J_rev'], self.J[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
+
+    def testBoundaryConCircleRev(self):
+
+        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineX')]['J_rev'], self.J_circle[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineY')]['J_rev'], self.J_circle[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
 
 
 # TODO create gradient tests for all components
