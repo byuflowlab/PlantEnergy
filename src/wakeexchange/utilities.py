@@ -913,6 +913,27 @@ def sunflower_points(n, alpha=1.0):
     return x, y
 
 
+def circumference_points(npts, location=0.735):
+
+    alpha = 2.*np.pi/npts
+    x = np.zeros(npts)
+    y = np.zeros(npts)
+
+    for n in np.arange(0, npts):
+        y[n] = np.sin(alpha*n)*location
+        x[n] = np.cos(alpha*n)*location
+
+    return x, y
+
+
+def line_points(npts):
+
+    x = np.linspace(-0.5, 0.5, npts)
+    y = np.zeros(npts)
+
+    return x, y
+
+
 
 
 
