@@ -99,12 +99,12 @@ class DirectionGroup(Group):
             self.add('myModel', wake_model(nTurbines, direction_id=direction_id, wake_model_options=wake_model_options),
                      promotes=(['model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                                'wtVelocity%i' % direction_id]
+                                'wtVelocity%i' % direction_id, 'turbineX', 'turbineY']
                                if (nSamples == 0) else
                                ['model_params:*', 'wind_speed', 'axialInduction',
                                 'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
                                 'wtVelocity%i' % direction_id, 'wsPositionXw', 'wsPositionYw', 'wsPositionZ',
-                                'wsArray%i' % direction_id]))
+                                'wsArray%i' % direction_id, 'turbineX', 'turbineY']))
 
         self.add('powerComp', WindDirectionPower(nTurbines=nTurbines, direction_id=direction_id, differentiable=True,
                                                  use_rotor_components=use_rotor_components),
