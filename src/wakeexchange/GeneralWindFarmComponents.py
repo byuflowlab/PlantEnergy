@@ -1068,6 +1068,14 @@ class WindDirectionPower(Component):
 
         self.add_param('rated_power', np.ones(nTurbines)*5000., units='kW',
                        desc='rated power for each turbine', pass_by_obj=True)
+        self.add_param('cut_in_speed', np.ones(nTurbines) * 3., units='m/s',
+                       desc='cut in wind speed for each turbine', pass_by_obj=True)
+        self.add_param('rated_speed', np.ones(nTurbines) * 11.4, units='m/s',
+                       desc='rated wind speed for each turbine', pass_by_obj=True)
+        self.add_param('cut_out_speed', np.ones(nTurbines) * 30., units='m/s',
+                       desc='cut out wind speed for each turbine', pass_by_obj=True)
+        self.add_param('power_model', 'benchmark',
+                       desc='power model to use, can be NREL or benchmark', pass_by_obj=True)
 
         # outputs
         self.add_output('wtPower%i' % direction_id, np.zeros(nTurbines), units='kW', desc='power output of each turbine')
@@ -1086,23 +1094,43 @@ class WindDirectionPower(Component):
         Cp = params['Cp']
         generatorEfficiency = params['generatorEfficiency']
 
-        # calculate initial values for wtPower (W)
-        wtPower = generatorEfficiency*(0.5*air_density*rotorArea*Cp*np.power(wtVelocity, 3))
+        cut_in_speed = params['cut_in_speed']
+        rated_speed = params['rated_speed']
+        cut_out_speed = params['cut_out_speed']
+        power_model = params['power_model']
 
-        # adjust units from W to kW
-        wtPower /= 1000.0
+        wtPower = np.zeros(nTurbines)
+
+        # calculate initial values for wtPower (W)
+        if power_model is 'NREL':
+            wtPower = generatorEfficiency*(0.5*air_density*rotorArea*Cp*np.power(wtVelocity, 3))
+
+            # adjust units from W to kW
+            wtPower /= 1000.0
+
+            # adjust wt power based on rated power
+            if not use_rotor_components and np.any(wtPower) > np.any(rated_power):
+                for i in range(0, nTurbines):
+                    if wtPower[i] > rated_power[i]:
+                        wtPower[i] = rated_power[i]
+
+        elif power_model is 'benchmark':
+            for turb in np.arange(0, nTurbines):
+                if wtVelocity[turb] < cut_in_speed[turb]:
+                    wtPower[turb] = 0.0
+                elif wtVelocity[turb] < rated_speed[turb]:
+                    wtPower[turb] = rated_power[turb]*((wtVelocity[turb]-cut_in_speed[turb])/(rated_speed[turb]-cut_in_speed[turb]))**3
+                elif wtVelocity[turb] < cut_out_speed[turb]:
+                    wtPower[turb] = rated_power[turb]
+
+
+
 
         # rated_velocity = np.power(1000.*rated_power/(generator_efficiency*(0.5*air_density*rotorArea*Cp)), 1./3.)
         #
         # dwt_power_dvelocitiesTurbines = np.eye(nTurbines)*generator_efficiency*(1.5*air_density*rotorArea*Cp *
         #                                                                         np.power(wtVelocity, 2))
         # dwt_power_dvelocitiesTurbines /= 1000.
-
-        # adjust wt power based on rated power
-        if not use_rotor_components and np.any(wtPower) >= np.any(rated_power):
-            for i in range(0, nTurbines):
-                if wtPower[i] >= rated_power[i]:
-                    wtPower[i] = rated_power[i]
 
 
         # if np.any(rated_velocity+1.) >= np.any(wtVelocity) >= np.any(rated_velocity-1.) and not \
