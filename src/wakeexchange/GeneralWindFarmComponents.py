@@ -1068,8 +1068,8 @@ class WindDirectionPower(Component):
 
         self.add_param('rated_power', np.ones(nTurbines)*5000., units='kW',
                        desc='rated power for each turbine', pass_by_obj=True)
-        self.add_param('cut_in_speed', np.ones(nTurbines) * 5000., units='kW',
-                       desc='rated power for each turbine', pass_by_obj=True)
+        self.add_param('cut_in_speed', np.ones(nTurbines) * 3.0, units='m/s',
+                       desc='cut-in speed for each turbine', pass_by_obj=True)
 
         # outputs
         self.add_output('wtPower%i' % direction_id, np.zeros(nTurbines), units='kW', desc='power output of each turbine')

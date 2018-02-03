@@ -110,7 +110,7 @@ class DirectionGroup(Group):
                                                  use_rotor_components=use_rotor_components),
                  promotes=['air_density', 'generatorEfficiency', 'rotorDiameter',
                            'wtVelocity%i' % direction_id, 'rated_power',
-                           'wtPower%i' % direction_id, 'dir_power%i' % direction_id])
+                           'wtPower%i' % direction_id, 'dir_power%i' % direction_id, 'cut_in_speed'])
 
         if use_rotor_components:
             self.connect('rotorGroup.Cp_out', 'powerComp.Cp')
@@ -213,7 +213,7 @@ class AEPGroup(Group):
                                  if (nSamples == 0) else
                                  ['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
-                                  'hubHeight',  'rated_power', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                                  'hubHeight',  'rated_power', 'cut_in_speed', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                   'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
                                   'dir_power%i' % direction_id, 'wsArray%i' % direction_id]))
 
