@@ -1068,6 +1068,8 @@ class WindDirectionPower(Component):
 
         self.add_param('rated_power', np.ones(nTurbines)*5000., units='kW',
                        desc='rated power for each turbine', pass_by_obj=True)
+        self.add_param('cut_in_speed', np.ones(nTurbines) * 5000., units='kW',
+                       desc='rated power for each turbine', pass_by_obj=True)
 
         # outputs
         self.add_output('wtPower%i' % direction_id, np.zeros(nTurbines), units='kW', desc='power output of each turbine')
@@ -1081,6 +1083,7 @@ class WindDirectionPower(Component):
         nTurbines = self.nTurbines
         wtVelocity = self.params['wtVelocity%i' % direction_id]
         rated_power = params['rated_power']
+        cut_in_speed = params['cut_in_speed']
         air_density = params['air_density']
         rotorArea = 0.25*np.pi*np.power(params['rotorDiameter'], 2)
         Cp = params['Cp']
@@ -1103,6 +1106,11 @@ class WindDirectionPower(Component):
             for i in range(0, nTurbines):
                 if wtPower[i] >= rated_power[i]:
                     wtPower[i] = rated_power[i]
+
+        if np.any(wtVelocity) < np.any(cut_in_speed):
+            for i in range(0, nTurbines):
+                if wtVelocity[i] < cut_in_speed[i]:
+                    wtPower[i] = 0.0
 
 
         # if np.any(rated_velocity+1.) >= np.any(wtVelocity) >= np.any(rated_velocity-1.) and not \
@@ -1149,6 +1157,7 @@ class WindDirectionPower(Component):
         Cp = params['Cp']
         generatorEfficiency = params['generatorEfficiency']
         rated_power = params['rated_power']
+        cut_in_speed = params['cut_in_speed']
         wtPower = unknowns['wtPower%i' % direction_id]
 
         # calcuate initial gradient values
@@ -1180,6 +1189,14 @@ class WindDirectionPower(Component):
         if np.any(wtPower) >= np.any(rated_power) and not use_rotor_components:
             for i in range(0, nTurbines):
                 if wtPower[i] >= rated_power[i]:
+                    dwtPower_dwtVelocity[i][i] = 0.0
+                    dwtPower_dCp[i][i] = 0.0
+                    dwtPower_drotorDiameter[i][i] = 0.0
+
+        # set gradients for turbines above rated power to zero
+        if np.any(wtVelocity) < np.any(cut_in_speed) and not use_rotor_components:
+            for i in range(0, nTurbines):
+                if wtVelocity[i] < cut_in_speed[i]:
                     dwtPower_dwtVelocity[i][i] = 0.0
                     dwtPower_dCp[i][i] = 0.0
                     dwtPower_drotorDiameter[i][i] = 0.0
