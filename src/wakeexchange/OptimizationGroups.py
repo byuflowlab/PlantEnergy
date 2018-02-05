@@ -145,7 +145,8 @@ class OptAEP(Group):
                                          pass_by_obj=True, desc='radius of wind farm boundary'), promotes=['*'])
             self.add('bv1', IndepVarComp('boundary_center', val=np.array([0., 0.]), units='m', pass_by_obj=True,
                                          desc='x and y positions of circular wind farm boundary center'), promotes=['*'])
-
+        else:
+            raise Warning("nVertices has been set to zero. No boundary constraints can be used unless nVertices > 0")
         # ##### add constraint definitions
         self.add('spacing_con', ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
                                          minSpacing=minSpacing, rotorDiameter=np.zeros(nTurbines),
