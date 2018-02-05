@@ -15,6 +15,8 @@ from GeneralWindFarmGroups import DirectionGroup, AEPGroup
 from GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC, calcFCR, calcLLC, calcLRC, calcOandM
 from floris import floris_wrapper, add_floris_params_IndepVarComps
 
+import warnings
+
 
 class OptPowerOneDir(Group):
     """ Group connecting the floris model for optimization with one wind direction"""
@@ -146,7 +148,8 @@ class OptAEP(Group):
             self.add('bv1', IndepVarComp('boundary_center', val=np.array([0., 0.]), units='m', pass_by_obj=True,
                                          desc='x and y positions of circular wind farm boundary center'), promotes=['*'])
         else:
-            raise Warning("nVertices has been set to zero. No boundary constraints can be used unless nVertices > 0")
+            warnings.warn("nVertices has been set to zero. No boundary constraints can be used unless nVertices > 0",
+                                RuntimeWarning)
         # ##### add constraint definitions
         self.add('spacing_con', ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
                                          minSpacing=minSpacing, rotorDiameter=np.zeros(nTurbines),
