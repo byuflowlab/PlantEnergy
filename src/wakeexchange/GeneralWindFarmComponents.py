@@ -300,7 +300,9 @@ class WindFarmAEP(Component):
 
         # increase objective function call count
         if self.rec_func_calls:
-            config.obj_func_calls += 1
+            comm = self.comm
+            rank = comm.rank
+            config.obj_func_calls[rank] += 1
 
     def linearize(self, params, unknowns, resids):
 
@@ -334,7 +336,9 @@ class WindFarmAEP(Component):
 
         # increase gradient function call count
         if self.rec_func_calls:
-            config.sens_func_calls += 1
+            comm = self.comm
+            rank = comm.rank
+            config.sens_func_calls[rank] += 1
 
         return J
 
@@ -1043,7 +1047,8 @@ class CPCT_Interpolate_Gradients_Smooth(Component):
 
 class WindDirectionPower(Component):
 
-    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1.):
+    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1.,
+                 cp_curve_spline=None):
 
         super(WindDirectionPower, self).__init__()
 
@@ -1053,6 +1058,7 @@ class WindDirectionPower(Component):
         self.direction_id = direction_id
         self.use_rotor_components = use_rotor_components
         self.cp_points = cp_points
+        self.cp_curve_spline = cp_curve_spline
 
         # set finite difference options (only used for testing)
         self.deriv_options['check_form'] = 'central'
@@ -1074,12 +1080,12 @@ class WindDirectionPower(Component):
                        desc='rated power for each turbine', pass_by_obj=True)
         self.add_param('cut_in_speed', np.ones(nTurbines) * 3.0, units='m/s',
                        desc='cut-in speed for each turbine', pass_by_obj=True)
-        self.add_param('cp_curve_cp', np.zeros(cp_points), units='m/s',
+        self.add_param('cp_curve_cp', np.zeros(cp_points),
                        desc='cp as a function of wind speed', pass_by_obj=True)
         self.add_param('cp_curve_vel', np.ones(cp_points), units='m/s',
                        desc='vel corresponding to cp curve points', pass_by_obj=True)
-        self.add_param('cp_curve_spline', None, units='m/s',
-                       desc='spline corresponding to cp curve', pass_by_obj=True)
+        # self.add_param('cp_curve_spline', None, units='m/s',
+        #                desc='spline corresponding to cp curve', pass_by_obj=True)
 
         # outputs
         self.add_output('wtPower%i' % direction_id, np.zeros(nTurbines), units='kW', desc='power output of each turbine')
@@ -1101,7 +1107,8 @@ class WindDirectionPower(Component):
 
         cp_curve_cp = params['cp_curve_cp']
         cp_curve_vel = params['cp_curve_vel']
-        cp_curve_spline = params['cp_curve_spline']
+        # cp_curve_spline = params['cp_curve_spline']
+        cp_curve_spline = self.cp_curve_spline
 
         if self.cp_points > 1.:
             # print('entered Cp')
@@ -1186,21 +1193,35 @@ class WindDirectionPower(Component):
         cp_curve_cp = params['cp_curve_cp']
         cp_curve_vel = params['cp_curve_vel']
 
-        cp_curve_spline = params['cp_curve_spline']
+        # cp_curve_spline = params['cp_curve_spline']
+        cp_curve_spline = self.cp_curve_spline
+
+        dCpdV = np.ones_like(Cp)
 
         if self.cp_points > 1.:
             # print('entered Cp')
             if cp_curve_spline is None:
+                # print('using interp')
                 for i in np.arange(0, nTurbines):
                     Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
                     # Cp[i] = spl(wtVelocity[i])
+                    dv = 1E-6
+                    dCpdV[i] = (np.interp(wtVelocity[i]+dv, cp_curve_vel, cp_curve_cp) -
+                             np.interp(wtVelocity[i]- dv, cp_curve_vel, cp_curve_cp))/(2.*dv)
             else:
                 # print('using spline')
                 # get Cp from the spline
-                Cp = cp_curve_spline(wtVelocity)
+
+                dCpdV_spline = cp_curve_spline.derivative()
+
+                Cp = np.zeros_like(wtVelocity)
+                dCpdV = np.zeros_like(wtVelocity)
+                for i in np.arange(0, len(wtVelocity)):
+                 Cp[i] = cp_curve_spline(wtVelocity[i])
+                 dCpdV[i] = dCpdV_spline(wtVelocity[i])
 
                 # get dCp/dV from the spline
-                dCpdV = cp_curve_spline.derivative(wtVelocity)
+
 
 
         # calcuate initial gradient values

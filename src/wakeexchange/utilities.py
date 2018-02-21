@@ -928,7 +928,7 @@ def circumference_points(npts, location=0.735):
 
 def line_points(npts):
 
-    x = np.linspace(-0.5, 0.5, npts)
+    x = np.linspace(-1., 1., npts)
     y = np.zeros(npts)
 
     return x, y

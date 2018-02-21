@@ -64,7 +64,9 @@ class DirectionGroup(Group):
 
     def __init__(self, nTurbines, direction_id=0, use_rotor_components=False, datasize=0,
                  differentiable=True, add_IdepVarComps=True, params_IdepVar_func=add_floris_params_IndepVarComps,
-                 params_IndepVar_args=None, nSamples=0, wake_model=floris_wrapper, wake_model_options=None, cp_points=1):
+                 params_IndepVar_args=None, nSamples=0, wake_model=floris_wrapper, wake_model_options=None, cp_points=1,
+                 cp_curve_spline=None):
+
         super(DirectionGroup, self).__init__()
 
         if add_IdepVarComps:
@@ -107,11 +109,12 @@ class DirectionGroup(Group):
                                 'wsArray%i' % direction_id]))
 
         self.add('powerComp', WindDirectionPower(nTurbines=nTurbines, direction_id=direction_id, differentiable=True,
-                                                 use_rotor_components=use_rotor_components, cp_points=cp_points),
+                                                 use_rotor_components=use_rotor_components, cp_points=cp_points,
+                                                 cp_curve_spline=cp_curve_spline),
                  promotes=['air_density', 'generatorEfficiency', 'rotorDiameter',
                            'wtVelocity%i' % direction_id, 'rated_power',
                            'wtPower%i' % direction_id, 'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp',
-                           'cp_curve_vel', 'cp_curve_spline'])
+                           'cp_curve_vel'])
 
         if use_rotor_components:
             self.connect('rotorGroup.Cp_out', 'powerComp.Cp')
@@ -128,7 +131,7 @@ class AEPGroup(Group):
     def __init__(self, nTurbines, nDirections=1, use_rotor_components=False, datasize=0,
                  differentiable=True, optimizingLayout=False, nSamples=0, wake_model=floris_wrapper,
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
-                 params_IndepVar_args=None, cp_points=1):
+                 params_IndepVar_args=None, cp_points=1, cp_curve_spline=None):
 
         super(AEPGroup, self).__init__()
 
@@ -206,18 +209,19 @@ class AEPGroup(Group):
                        DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
                                       use_rotor_components=use_rotor_components, datasize=datasize,
                                       differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples,
-                                      wake_model=wake_model, wake_model_options=wake_model_options, cp_points=cp_points),
+                                      wake_model=wake_model, wake_model_options=wake_model_options, cp_points=cp_points,
+                                      cp_curve_spline=cp_curve_spline),
                        promotes=(['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight', 'rated_power', 'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
-                                  'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp', 'cp_curve_vel', 'cp_curve_spline']
+                                  'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp', 'cp_curve_vel']
                                  if (nSamples == 0) else
                                  ['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight',  'rated_power', 'cut_in_speed', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                   'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
                                   'dir_power%i' % direction_id, 'wsArray%i' % direction_id, 'cut_in_speed', 'cp_curve_cp',
-                                  'cp_curve_vel', 'cp_curve_spline']))
+                                  'cp_curve_vel']))
 
         print "parallel groups initialized"
         self.add('powerMUX', MUX(nDirections, units=power_units))
