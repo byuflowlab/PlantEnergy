@@ -9,7 +9,7 @@ import numpy as np
 obj_func_calls = 0
 sens_func_calls = 0
 
-nMaxProcs = 100.
+nMaxProcs = 100
 obj_func_calls_array = np.zeros(nMaxProcs)
 sens_func_calls = np.zeros(nMaxProcs)
 
