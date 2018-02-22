@@ -167,6 +167,14 @@ class AEPGroup(Group):
             self.add('dv10', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])
             self.add('dv11', IndepVarComp('Cp_in', np.zeros(nTurbines)), promotes=['*'])
 
+        self.add('dv12', IndepVarComp('cp_curve_cp', np.zeros(datasize),
+                                               desc='cp curve cp data', pass_by_obj=True), promotes=['*'])
+        self.add('dv13', IndepVarComp('cp_curve_vel', np.zeros(datasize), units='m/s',
+                                               desc='cp curve velocity data', pass_by_obj=True), promotes=['*'])
+        self.add('dv14', IndepVarComp('cut_in_speed', np.zeros(nTurbines), units='m/s',
+                                               desc='cut-in speed of wind turbines', pass_by_obj=True), promotes=['*'])
+
+
         # add variable tree IndepVarComps
         add_gen_params_IdepVarComps(self, datasize=datasize)
 
