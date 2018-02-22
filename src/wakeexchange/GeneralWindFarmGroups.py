@@ -135,7 +135,7 @@ class AEPGroup(Group):
 
         super(AEPGroup, self).__init__()
 
-        print "initializing AEPGroup group"
+        # print "initializing AEPGroup group"
 
         if wake_model_options is None:
             wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
@@ -182,7 +182,7 @@ class AEPGroup(Group):
         self.add('windDirectionsDeMUX', DeMUX(nDirections, units=direction_units))
         self.add('windSpeedsDeMUX', DeMUX(nDirections, units=wind_speed_units))
 
-        print "initializing parallel groups"
+        # print "initializing parallel groups"
         pg = self.add('all_directions', ParallelGroup(), promotes=['*'])
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections):
@@ -223,7 +223,7 @@ class AEPGroup(Group):
                                   'dir_power%i' % direction_id, 'wsArray%i' % direction_id, 'cut_in_speed', 'cp_curve_cp',
                                   'cp_curve_vel']))
 
-        print "parallel groups initialized"
+        # print "parallel groups initialized"
         self.add('powerMUX', MUX(nDirections, units=power_units))
         self.add('AEPcomp', WindFarmAEP(nDirections, rec_func_calls=rec_func_calls), promotes=['*'])
 

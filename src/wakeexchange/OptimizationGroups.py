@@ -111,7 +111,7 @@ class OptAEP(Group):
                  params_IndepVar_args={'use_rotor_components': False}, cp_points=1, cp_curve_spline=None,
                  rec_func_calls=False):
 
-        print "initializing OptAEP Group"
+        # print "initializing OptAEP Group"
         super(OptAEP, self).__init__()
 
         if wake_model_options is None:
