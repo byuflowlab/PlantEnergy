@@ -11,7 +11,7 @@ sens_func_calls = 0
 
 nMaxProcs = 100
 obj_func_calls_array = np.zeros(nMaxProcs)
-sens_func_calls = np.zeros(nMaxProcs)
+sens_func_calls_array = np.zeros(nMaxProcs)
 
 
 floris_single_component = False

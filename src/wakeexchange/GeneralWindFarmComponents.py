@@ -250,7 +250,7 @@ class AdjustCtCpYaw(Component):
 class WindFarmAEP(Component):
     """ Estimate the AEP based on power production for each direction and weighted by wind direction frequency  """
 
-    def __init__(self, nDirections, rec_func_calls=True):
+    def __init__(self, nDirections, rec_func_calls=False):
 
         super(WindFarmAEP, self).__init__()
 
@@ -299,10 +299,11 @@ class WindFarmAEP(Component):
         # print AEP
 
         # increase objective function call count
+
         if self.rec_func_calls:
             comm = self.comm
             rank = comm.rank
-            config.obj_func_calls[rank] += 1
+            config.obj_func_calls_array[rank] += 1
 
     def linearize(self, params, unknowns, resids):
 
@@ -338,7 +339,8 @@ class WindFarmAEP(Component):
         if self.rec_func_calls:
             comm = self.comm
             rank = comm.rank
-            config.sens_func_calls[rank] += 1
+            config.sens_func_calls_array[rank] += 1
+            # print(np.sum(config.sens_func_calls_array))
 
         return J
 

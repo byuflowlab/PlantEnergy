@@ -131,7 +131,7 @@ class AEPGroup(Group):
     def __init__(self, nTurbines, nDirections=1, use_rotor_components=False, datasize=0,
                  differentiable=True, optimizingLayout=False, nSamples=0, wake_model=floris_wrapper,
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
-                 params_IndepVar_args=None, cp_points=1, cp_curve_spline=None):
+                 params_IndepVar_args=None, cp_points=1, cp_curve_spline=None, rec_func_calls=False):
 
         super(AEPGroup, self).__init__()
 
@@ -225,7 +225,7 @@ class AEPGroup(Group):
 
         print "parallel groups initialized"
         self.add('powerMUX', MUX(nDirections, units=power_units))
-        self.add('AEPcomp', WindFarmAEP(nDirections), promotes=['*'])
+        self.add('AEPcomp', WindFarmAEP(nDirections, rec_func_calls=rec_func_calls), promotes=['*'])
 
         # connect components
         self.connect('windDirections', 'windDirectionsDeMUX.Array')

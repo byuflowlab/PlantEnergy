@@ -233,8 +233,8 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
 
         # print("HERE 00")
 
-        nTurbines = 6
-        nDirections = 20
+        nTurbines = 16
+        nDirections = 50
         self.rtol = 1E-5
         self.atol = 1E-0
 
@@ -323,6 +323,7 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         calc_k_star = True
         sort_turbs = True
         wake_model_version = 2014
+        expansion_factor = 3.
 
         # print("HERE 0")
         prob = Problem(root=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=nVertices,
@@ -406,6 +407,7 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         prob['model_params:kz'] = k_calc
         prob['model_params:print_ti'] = False
         prob['model_params:wake_model_version'] = wake_model_version
+        prob['model_params:opt_exp_fac'] = expansion_factor
 
 
         # run problem

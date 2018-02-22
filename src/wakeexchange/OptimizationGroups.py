@@ -108,7 +108,8 @@ class OptAEP(Group):
     def __init__(self, nTurbines, nDirections=1, minSpacing=2., use_rotor_components=True,
                  datasize=0, differentiable=True, force_fd=False, nVertices=0, wake_model=floris_wrapper,
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
-                 params_IndepVar_args={'use_rotor_components': False}, cp_points=1, cp_curve_spline=None):
+                 params_IndepVar_args={'use_rotor_components': False}, cp_points=1, cp_curve_spline=None,
+                 rec_func_calls=False):
 
         print "initializing OptAEP Group"
         super(OptAEP, self).__init__()
@@ -134,7 +135,8 @@ class OptAEP(Group):
                                             wake_model_options=wake_model_options,
                                             params_IdepVar_func=params_IdepVar_func,
                                             params_IndepVar_args=params_IndepVar_args, nSamples=nSamples,
-                                            cp_points=cp_points, cp_curve_spline=cp_curve_spline),
+                                            cp_points=cp_points, cp_curve_spline=cp_curve_spline,
+                                      rec_func_calls=rec_func_calls),
                  promotes=['*'])
 
 
