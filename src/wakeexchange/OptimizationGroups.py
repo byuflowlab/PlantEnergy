@@ -9,7 +9,7 @@ Brigham Young University
 
 import numpy as np
 
-from openmdao.api import Group, IndepVarComp, ExecComp
+from openmdao.api import Group, IndepVarComp, ExecComp, ParallelGroup
 
 from GeneralWindFarmGroups import DirectionGroup, AEPGroup
 from GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC, calcFCR, calcLLC, calcLRC, calcOandM
@@ -46,7 +46,7 @@ class OptPowerOneDir(Group):
         # self.add('p3', IndepVarComp('yaw', np.zeros(nTurbines)), promotes=['*'])
 
 
-class OptAEP(Group):
+class OptAEP(ParallelGroup):
     """
         Group adding optimization parameters to an AEPGroup
 
