@@ -14,110 +14,110 @@ import cPickle as pickle
 from scipy.interpolate import UnivariateSpline
 
 
-class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
-
-    def setUp(self):
-
-        nTurbines = 3
-        self.rtol = 1E-6
-        self.atol = 1E-6
-
-        np.random.seed(seed=10)
-
-        turbineX = np.random.rand(nTurbines)*3000.
-        turbineY = np.random.rand(nTurbines)*3000.
-
-        # generate boundary constraint
-        locations = np.zeros([nTurbines, 2])
-        for i in range(0, nTurbines):
-            locations[i] = np.array([turbineX[i], turbineY[i]])
-
-        # print locations
-        boundaryVertices, boundaryNormals = calculate_boundary(locations)
-        nVertices = len(boundaryNormals)
-
-        minSpacing = 2.
-
-        # initialize input variable arrays
-        rotorDiameter = np.ones(nTurbines)*np.random.random()*150.
-        axialInduction = np.ones(nTurbines)*np.random.random()*(1./3.)
-        Ct = np.ones(nTurbines)*np.random.random()
-        Cp = np.ones(nTurbines)*np.random.random()
-        generatorEfficiency = np.ones(nTurbines)*np.random.random()
-        yaw = np.random.rand(nTurbines)*60. - 30.
-
-        # Define flow properties
-        nDirections = 4
-        windSpeeds = np.random.rand(nDirections)*20        # m/s
-        air_density = 1.1716    # kg/m^3
-        windDirections = np.random.rand(nDirections)*360.0
-        windFrequencies = np.random.rand(nDirections)
-
-        # set up problem
-        # prob = Problem(root=OptAEP(nTurbines, nDirections=1))
-
-        prob = Problem(root=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=nVertices,
-                                          minSpacing=minSpacing, use_rotor_components=False))
-
-        # set up optimizer
-        # prob.driver = pyOptSparseDriver()
-        # prob.driver.options['optimizer'] = 'SNOPT'
-        prob.driver.add_objective('obj', scaler=1E-5)
-
-        # set optimizer options
-        # prob.driver.opt_settings['Verify level'] = 3
-        # prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
-        # prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
-        # prob.driver.opt_settings['Major iterations limit'] = 1
-
-        # select design variables
-        prob.driver.add_desvar('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1.0)
-        prob.driver.add_desvar('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1.0)
-        for direction_id in range(0, windDirections.size):
-            prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1.0)
-
-        # add constraints
-        prob.driver.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
-        prob.driver.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1.0)
-
-
-        # initialize problem
-        prob.setup()
-
-        # assign values to constant inputs (not design variables)
-        prob['turbineX'] = turbineX
-        prob['turbineY'] = turbineY
-        prob['yaw0'] = yaw
-        prob['rotorDiameter'] = rotorDiameter
-        prob['axialInduction'] = axialInduction
-        prob['Ct_in'] = Ct
-        prob['Cp_in'] = Cp
-        prob['generatorEfficiency'] = generatorEfficiency
-        prob['windSpeeds'] = windSpeeds
-        prob['air_density'] = air_density
-        prob['windDirections'] = windDirections
-        prob['windFrequencies'] = windFrequencies
-        prob['model_params:FLORISoriginal'] = True
-
-        # provide values for hull constraint
-        prob['boundaryVertices'] = boundaryVertices
-        prob['boundaryNormals'] = boundaryNormals
-
-        # run problem
-        prob.run()
-
-        # pass results to self for use with unit test
-        self.J = prob.check_total_derivatives(out_stream=None)
-        self.nDirections = nDirections
-
-        # print self.J
-
-    def testObj(self):
-
-        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'], self.J[('obj', 'turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['J_fwd'], self.J[('obj', 'turbineY')]['J_fd'], self.rtol, self.atol)
-        for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['J_fwd'], self.J[('obj', 'yaw%i' % dir)]['J_fd'], self.rtol, self.atol)
+# class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
+#
+#     def setUp(self):
+#
+#         nTurbines = 3
+#         self.rtol = 1E-6
+#         self.atol = 1E-6
+#
+#         np.random.seed(seed=10)
+#
+#         turbineX = np.random.rand(nTurbines)*3000.
+#         turbineY = np.random.rand(nTurbines)*3000.
+#
+#         # generate boundary constraint
+#         locations = np.zeros([nTurbines, 2])
+#         for i in range(0, nTurbines):
+#             locations[i] = np.array([turbineX[i], turbineY[i]])
+#
+#         # print locations
+#         boundaryVertices, boundaryNormals = calculate_boundary(locations)
+#         nVertices = len(boundaryNormals)
+#
+#         minSpacing = 2.
+#
+#         # initialize input variable arrays
+#         rotorDiameter = np.ones(nTurbines)*np.random.random()*150.
+#         axialInduction = np.ones(nTurbines)*np.random.random()*(1./3.)
+#         Ct = np.ones(nTurbines)*np.random.random()
+#         Cp = np.ones(nTurbines)*np.random.random()
+#         generatorEfficiency = np.ones(nTurbines)*np.random.random()
+#         yaw = np.random.rand(nTurbines)*60. - 30.
+#
+#         # Define flow properties
+#         nDirections = 4
+#         windSpeeds = np.random.rand(nDirections)*20        # m/s
+#         air_density = 1.1716    # kg/m^3
+#         windDirections = np.random.rand(nDirections)*360.0
+#         windFrequencies = np.random.rand(nDirections)
+#
+#         # set up problem
+#         # prob = Problem(root=OptAEP(nTurbines, nDirections=1))
+#
+#         prob = Problem(root=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=nVertices,
+#                                           minSpacing=minSpacing, use_rotor_components=False))
+#
+#         # set up optimizer
+#         # prob.driver = pyOptSparseDriver()
+#         # prob.driver.options['optimizer'] = 'SNOPT'
+#         prob.driver.add_objective('obj', scaler=1E-5)
+#
+#         # set optimizer options
+#         # prob.driver.opt_settings['Verify level'] = 3
+#         # prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
+#         # prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
+#         # prob.driver.opt_settings['Major iterations limit'] = 1
+#
+#         # select design variables
+#         prob.driver.add_desvar('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1.0)
+#         prob.driver.add_desvar('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1.0)
+#         for direction_id in range(0, windDirections.size):
+#             prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1.0)
+#
+#         # add constraints
+#         prob.driver.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
+#         prob.driver.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1.0)
+#
+#
+#         # initialize problem
+#         prob.setup()
+#
+#         # assign values to constant inputs (not design variables)
+#         prob['turbineX'] = turbineX
+#         prob['turbineY'] = turbineY
+#         prob['yaw0'] = yaw
+#         prob['rotorDiameter'] = rotorDiameter
+#         prob['axialInduction'] = axialInduction
+#         prob['Ct_in'] = Ct
+#         prob['Cp_in'] = Cp
+#         prob['generatorEfficiency'] = generatorEfficiency
+#         prob['windSpeeds'] = windSpeeds
+#         prob['air_density'] = air_density
+#         prob['windDirections'] = windDirections
+#         prob['windFrequencies'] = windFrequencies
+#         prob['model_params:FLORISoriginal'] = True
+#
+#         # provide values for hull constraint
+#         prob['boundaryVertices'] = boundaryVertices
+#         prob['boundaryNormals'] = boundaryNormals
+#
+#         # run problem
+#         prob.run()
+#
+#         # pass results to self for use with unit test
+#         self.J = prob.check_total_derivatives(out_stream=None)
+#         self.nDirections = nDirections
+#
+#         # print self.J
+#
+#     def testObj(self):
+#
+#         np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'], self.J[('obj', 'turbineX')]['J_fd'], self.rtol, self.atol)
+#         np.testing.assert_allclose(self.J[('obj', 'turbineY')]['J_fwd'], self.J[('obj', 'turbineY')]['J_fd'], self.rtol, self.atol)
+#         for dir in np.arange(0, self.nDirections):
+#             np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['J_fwd'], self.J[('obj', 'yaw%i' % dir)]['J_fd'], self.rtol, self.atol)
 
 
 class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
@@ -319,11 +319,12 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         k_calc = 0.3837 * TI + 0.003678
 
         wake_combination_method = 1
-        ti_calculation_method = 5
+        ti_calculation_method = 0
         calc_k_star = True
         sort_turbs = True
         wake_model_version = 2014
         expansion_factor = 3.
+        use_parallel_group=False
 
         # print("HERE 0")
         prob = Problem(root=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=nVertices,
@@ -331,7 +332,8 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
                                    params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=True,
                                    wake_model_options=wake_model_options,
                                    params_IndepVar_args={'nRotorPoints': nRotorPoints},
-                                   cp_curve_spline=cp_curve_spline, cp_points=cp_curve_cp.size))
+                                   cp_curve_spline=cp_curve_spline, cp_points=cp_curve_cp.size,
+                                   use_parallel_group=False))
         # print("HERE 1")
         # set up optimizer
         # prob.driver = pyOptSparseDriver()
