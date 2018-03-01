@@ -131,8 +131,7 @@ class AEPGroup(Group):
     def __init__(self, nTurbines, nDirections=1, use_rotor_components=False, datasize=0,
                  differentiable=True, optimizingLayout=False, nSamples=0, wake_model=floris_wrapper,
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
-                 params_IndepVar_args=None, cp_points=1, cp_curve_spline=None, rec_func_calls=False,
-                 use_parallel_group=True):
+                 params_IndepVar_args=None, cp_points=1, cp_curve_spline=None, rec_func_calls=False):
 
         super(AEPGroup, self).__init__()
 
@@ -192,12 +191,12 @@ class AEPGroup(Group):
         self.add('windSpeedsDeMUX', DeMUX(nDirections, units=wind_speed_units))
 
         # print "initializing parallel groups"
-        if use_parallel_group:
-            direction_group = ParallelGroup()
-        else:
-            direction_group = Group()
+        # if use_parallel_group:
+        #     direction_group = ParallelGroup()
+        # else:
+        #     direction_group = Group()
 
-        pg = self.add('all_directions', direction_group, promotes=['*'])
+        pg = self.add('all_directions', ParallelGroup, promotes=['*'])
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections):
                 # print 'assigning direction group %i' % direction_id
