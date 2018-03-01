@@ -196,7 +196,7 @@ class AEPGroup(Group):
         # else:
         #     direction_group = Group()
 
-        pg = self.add('all_directions', ParallelGroup, promotes=['*'])
+        pg = self.add('all_directions', ParallelGroup(), promotes=['*'])
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections):
                 # print 'assigning direction group %i' % direction_id
