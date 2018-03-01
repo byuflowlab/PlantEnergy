@@ -9,7 +9,7 @@ Brigham Young University
 
 import numpy as np
 
-from openmdao.api import Group, IndepVarComp, ExecComp, ParallelGroup
+from openmdao.api import Group, IndepVarComp, ExecComp
 
 from GeneralWindFarmGroups import DirectionGroup, AEPGroup
 from GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC, calcFCR, calcLLC, calcLRC, calcOandM
@@ -46,7 +46,7 @@ class OptPowerOneDir(Group):
         # self.add('p3', IndepVarComp('yaw', np.zeros(nTurbines)), promotes=['*'])
 
 
-class OptAEP(ParallelGroup):
+class OptAEP(Group):
     """
         Group adding optimization parameters to an AEPGroup
 
@@ -231,7 +231,7 @@ class OptCOE(Group):
     def __init__(self, nTurbines, nDirections=1, minSpacing=2., use_rotor_components=True,
                  datasize=0, differentiable=True, force_fd=False, nVertices=0, wake_model=floris_wrapper,
                  wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
-                 params_IndepVar_args={'use_rotor_components': False}, nTopologyPoints=0, use_parallel_group=True):
+                 params_IndepVar_args={'use_rotor_components': False}, nTopologyPoints=0):
 
 
         super(OptCOE, self).__init__()
@@ -257,8 +257,7 @@ class OptCOE(Group):
                                             datasize=datasize, differentiable=differentiable, wake_model=wake_model,
                                             wake_model_options=wake_model_options,
                                             params_IdepVar_func=params_IdepVar_func,
-                                            params_IndepVar_args=params_IndepVar_args, nSamples=nSamples,
-                                            use_parallel_group=use_parallel_group),
+                                            params_IndepVar_args=params_IndepVar_args, nSamples=nSamples),
                  promotes=['*'])
 
         # add component that calculates ICC
