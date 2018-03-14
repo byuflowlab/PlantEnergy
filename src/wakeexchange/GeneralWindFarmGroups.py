@@ -135,8 +135,6 @@ class AEPGroup(Group):
 
         super(AEPGroup, self).__init__()
 
-        # print "initializing AEPGroup group"
-
         if wake_model_options is None:
             wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
                              'nSamples': nSamples, 'verbose': False}
@@ -145,8 +143,6 @@ class AEPGroup(Group):
         power_units = 'kW'
         direction_units = 'deg'
         wind_speed_units = 'm/s'
-
-        # print 'SAMPLES: ', nSamples
 
         # add necessary inputs for group
         self.add('dv0', IndepVarComp('windDirections', np.zeros(nDirections), units=direction_units), promotes=['*'])
@@ -190,7 +186,7 @@ class AEPGroup(Group):
         self.add('windDirectionsDeMUX', DeMUX(nDirections, units=direction_units))
         self.add('windSpeedsDeMUX', DeMUX(nDirections, units=wind_speed_units))
 
-        # print "initializing parallel groups"
+        # print("initializing parallel groups")
         # if use_parallel_group:
         #     direction_group = ParallelGroup()
         # else:
@@ -199,7 +195,7 @@ class AEPGroup(Group):
         pg = self.add('all_directions', ParallelGroup(), promotes=['*'])
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections):
-                # print 'assigning direction group %i' % direction_id
+                # print('assigning direction group %i'.format(direction_id))
                 pg.add('direction_group%i' % direction_id,
                        DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
                                       use_rotor_components=use_rotor_components, datasize=datasize,
@@ -217,7 +213,7 @@ class AEPGroup(Group):
                                   'wtPower%i' % direction_id, 'dir_power%i' % direction_id, 'wsArray%i' % direction_id]))
         else:
             for direction_id in np.arange(0, nDirections):
-                # print 'assigning direction group %i' % direction_id
+                # print('assigning direction group %i'.format(direction_id))
                 pg.add('direction_group%i' % direction_id,
                        DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
                                       use_rotor_components=use_rotor_components, datasize=datasize,
@@ -236,7 +232,7 @@ class AEPGroup(Group):
                                   'dir_power%i' % direction_id, 'wsArray%i' % direction_id, 'cut_in_speed', 'cp_curve_cp',
                                   'cp_curve_vel']))
 
-        # print "parallel groups initialized"
+        # print("parallel groups initialized")
         self.add('powerMUX', MUX(nDirections, units=power_units))
         self.add('AEPcomp', WindFarmAEP(nDirections, rec_func_calls=rec_func_calls), promotes=['*'])
 

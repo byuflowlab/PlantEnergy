@@ -11,9 +11,9 @@ import numpy as np
 
 from openmdao.api import Group, IndepVarComp, ExecComp
 
-from GeneralWindFarmGroups import DirectionGroup, AEPGroup
-from GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC, calcFCR, calcLLC, calcLRC, calcOandM
-from floris import floris_wrapper, add_floris_params_IndepVarComps
+from wakeexchange.GeneralWindFarmGroups import DirectionGroup, AEPGroup
+from wakeexchange.GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC, calcFCR, calcLLC, calcLRC, calcOandM
+from wakeexchange.floris import floris_wrapper, add_floris_params_IndepVarComps
 
 import warnings
 
@@ -111,7 +111,7 @@ class OptAEP(Group):
                  params_IndepVar_args={'use_rotor_components': False}, cp_points=1, cp_curve_spline=None,
                  rec_func_calls=False):
 
-        # print "initializing OptAEP Group"
+        # print("initializing OptAEP Group")
         super(OptAEP, self).__init__()
 
         if wake_model_options is None:

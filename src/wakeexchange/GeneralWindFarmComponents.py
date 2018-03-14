@@ -32,7 +32,7 @@ class WindFrame(Component):
 
     def __init__(self, nTurbines, resolution=0, differentiable=True, nSamples=0):
 
-        # print 'entering windframe __init__ - analytic'
+        # print('entering windframe __init__ - analytic')
 
         super(WindFrame, self).__init__()
 
@@ -141,7 +141,7 @@ class AdjustCtCpYaw(Component):
 
     def __init__(self, nTurbines, direction_id=0, differentiable=True):
 
-        # print 'entering adjustCtCp __init__ - analytic'
+        # print('entering adjustCtCp __init__ - analytic')
         super(AdjustCtCpYaw, self).__init__()
 
         self. direction_id = direction_id
@@ -178,13 +178,13 @@ class AdjustCtCpYaw(Component):
 
         direction_id = self.direction_id
 
-        # print 'entering adjustCtCP - analytic'
+        # print('entering adjustCtCP - analytic')
 
         # collect inputs
         Ct = params['Ct_in']
         Cp = params['Cp_in']
         yaw = params['yaw%i' % direction_id] * np.pi / 180.
-        # print 'in Ct correction, Ct_in: ', Ct
+        # print('in Ct correction, Ct_in: '.format(Ct))
 
         pP = params['gen_params:pP']
 
@@ -193,9 +193,9 @@ class AdjustCtCpYaw(Component):
 
         # calculate new CT values, if desired
         if not CTcorrected:
-            # print "ct not corrected"
+            # print("ct not corrected")
             unknowns['Ct_out'] = np.cos(yaw)*np.cos(yaw)*Ct
-            # print 'in ct correction Ct_out: ', unknowns['Ct_out']
+            # print('in ct correction Ct_out: '.format(unknowns['Ct_out']))
         else:
             unknowns['Ct_out'] = Ct
 
@@ -296,7 +296,7 @@ class WindFarmAEP(Component):
             unknowns['AEP'] = (AEP)**(-1)
         else:
             raise ValueError('AEP_method must be one of ["none","log","inverse"]')
-        # print AEP
+        # print(AEP)
 
         # increase objective function call count
 
@@ -307,7 +307,7 @@ class WindFarmAEP(Component):
 
     def linearize(self, params, unknowns, resids):
 
-        # # print 'entering AEP - provideJ'
+        # # print('entering AEP - provideJ')
         AEP_method = params['gen_params:AEP_method']
 
         # assign params to local variables
@@ -562,7 +562,7 @@ class SpacingComp(Component):
                         desc='spacing of all turbines in the wind farm')
 
     def solve_nonlinear(self, params, unknowns, resids):
-        # print 'in dist const'
+        # print('in dist const')
 
         turbineX = params['turbineX']
         turbineY = params['turbineY']
@@ -667,7 +667,7 @@ class BoundaryComp(Component):
             for i in range(0, self.nTurbines):
                 locations[i] = np.array([turbineX[i], turbineY[i]])
 
-            # print "in comp, locs are: ", locations
+            # print("in comp, locs are: ".format(locations))
 
             # calculate distance from each point to each face
             unknowns['boundaryDistances'] = calculate_distance(locations,
@@ -887,8 +887,6 @@ class CPCT_Interpolate_Gradients(Component):
         # normalize on incoming wind speed to correct coefficients for yaw
         self.unknowns['Cp_out'] = self.unknowns['Cp_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**pP
         self.unknowns['Ct_out'] = self.unknowns['Ct_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**2
-        # print 'in CPCT interp, wind_speed_hub = ', self.params['wtVelocity%i' % direction_id]
-        # print 'in CPCT: ', params['velocitiesTurbines0']
 
     def linearize(self, params, unknowns, resids):  # standard central differencing
         # set step size for finite differencing
@@ -1012,18 +1010,18 @@ class CPCT_Interpolate_Gradients_Smooth(Component):
         CP, dCPdvel, _, _ = CPspline.interp(params['wtVelocity%i' % direction_id])
         CT, dCTdvel, _, _ = CTspline.interp(params['wtVelocity%i' % direction_id])
 
-        # print 'in solve_nonlinear', dCPdvel, dCTdvel
+        # print('in solve_nonlinear', dCPdvel, dCTdvel)
         # pP = 3.0
-        # print "in rotor, pP = ", pP
+        # print("in rotor, pP = ", pP)
         Cp_out = CP*np.cos(yaw*np.pi/180.)**pP
         Ct_out = CT*np.cos(yaw*np.pi/180.)**2.
 
-        # print "in rotor, Cp = [%f. %f], Ct = [%f, %f]" % (Cp_out[0], Cp_out[1], Ct_out[0], Ct_out[1])
+        # print("in rotor, Cp = [%f. %f], Ct = [%f, %f]".format(Cp_out[0], Cp_out[1], Ct_out[0], Ct_out[1]))
 
         self.dCp_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*pP*CP*np.cos(yaw*np.pi/180.)**(pP-1.)
         self.dCp_out_dvel = dCPdvel*np.cos(yaw*np.pi/180.)**pP
 
-        # print 'in solve_nonlinear', self.dCp_out_dyaw, self.dCp_out_dvel
+        # print('in solve_nonlinear', self.dCp_out_dyaw, self.dCp_out_dvel)
 
         self.dCt_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*2.*CT*np.cos(yaw*np.pi/180.)
         self.dCt_out_dvel = dCTdvel*np.cos(yaw*np.pi/180.)**2.
@@ -1174,7 +1172,7 @@ class WindDirectionPower(Component):
         unknowns['wtPower%i' % direction_id] = wtPower
         unknowns['dir_power%i' % direction_id] = dir_power
 
-        # print wtPower
+        # print(wtPower)
 
     def linearize(self, params, unknowns, resids):
 
@@ -1477,11 +1475,11 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     AmaliaLocationsAndHull = loadmat('Amalia_locAndHull.mat')
-    print AmaliaLocationsAndHull.keys()
+    print(AmaliaLocationsAndHull.keys())
     turbineX = AmaliaLocationsAndHull['turbineX'].flatten()
     turbineY = AmaliaLocationsAndHull['turbineY'].flatten()
 
-    print turbineX.size
+    print(turbineX.size)
 
     nTurbines = len(turbineX)
     locations = np.zeros([nTurbines, 2])
@@ -1491,7 +1489,7 @@ if __name__ == "__main__":
     # get boundary information
     vertices, unit_normals = calculate_boundary(locations)
 
-    print vertices, unit_normals
+    print(vertices, unit_normals)
 
     # define point of interest
     resolution = 100
@@ -1508,7 +1506,7 @@ if __name__ == "__main__":
     # calculate distance from each point to each face
     face_distance, inside = calculate_distance(p, vertices, unit_normals, return_bool=True)
 
-    print inside.shape
+    print(inside.shape)
     # reshape arrays for plotting
     xx = np.reshape(xx, (resolution, resolution))
     yy = np.reshape(yy, (resolution, resolution))

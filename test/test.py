@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-import cPickle as pickle
+#import cPickle as pickle
 import os
 
 from wakeexchange.OptimizationGroups import AEPGroup
@@ -390,7 +390,7 @@ class TestGaussWrapper(unittest.TestCase):
         # run the problem
         prob.run()
 
-        print prob['wtVelocity0'], prob['turbineX'], prob['turbineY']
+        print(prob['wtVelocity0'], prob['turbineX'], prob['turbineY'])
 
         self.prob = prob
 

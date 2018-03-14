@@ -12,7 +12,7 @@ import re
 
 def add_floris_params_IndepVarComps(openmdao_object, use_rotor_components=False):
 
-    print use_rotor_components
+    print(use_rotor_components)
     # permanently alter defaults here
 
     # ##################   wake deflection   ##################

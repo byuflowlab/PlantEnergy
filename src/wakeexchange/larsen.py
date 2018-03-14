@@ -99,7 +99,7 @@ class GC_Larsen(Component):
         self.wf_instance.xyz = np.vstack([a, H])
         self.wf_instance.nWT = nTurbines
 
-        #print self.wf_instance.WT.refCurvesArray
+        #print(self.wf_instance.WT.refCurvesArray)
         #quit()
 
         gcl = GCL(WF=self.wf_instance, TI=Ia, z0=0.0001, NG=8, sup='lin', inflow='log')
@@ -108,7 +108,6 @@ class GC_Larsen(Component):
         # -------------------------------------------------------- #
 
         unknowns['wtVelocity%i' % self.direction_id] = hubVelocity
-        #print unknowns['wtVelocity%i' %   direction_id]
 
 
 class larsen_wrapper(Group):
