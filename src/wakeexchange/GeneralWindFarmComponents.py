@@ -1,7 +1,7 @@
 from openmdao.api import Component, Group, Problem, IndepVarComp
 from akima import Akima, akima_interp
-from utilities import smooth_min, hermite_spline
-import config
+from wakeexchange.utilities import hermite_spline
+import wakeexchange.config
 
 import numpy as np
 from scipy import interp
@@ -604,7 +604,7 @@ class SpacingComp(Component):
                        desc='y coordinates of turbines in wind dir. ref. frame')
 
         # Explicitly size output array
-        self.add_output('wtSeparationSquared', val=np.zeros(((nTurbines-1)*nTurbines/2)),
+        self.add_output('wtSeparationSquared', val=np.zeros(((nTurbines-1)*nTurbines/2.)),
                         desc='spacing of all turbines in the wind farm')
 
     def solve_nonlinear(self, params, unknowns, resids):
@@ -1386,8 +1386,9 @@ class calcLRC(Component):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    import os
 
-    AmaliaLocationsAndHull = loadmat('Amalia_locAndHull.mat')
+    AmaliaLocationsAndHull = loadmat(os.path.join('..','..','doc','examples','input_files','Amalia_locAndHull.mat'))
     print(AmaliaLocationsAndHull.keys())
     turbineX = AmaliaLocationsAndHull['turbineX'].flatten()
     turbineY = AmaliaLocationsAndHull['turbineY'].flatten()

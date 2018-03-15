@@ -252,7 +252,7 @@ class floris_wrapper(Group):
         super(floris_wrapper, self).__init__()
 
         if wake_model_options is None:
-            wake_wake_model_options = {'differentiable': True, 'use_rotor_components': False, 'nSamples': 0, 'verbose': False}
+            wake_model_options = {'differentiable': True, 'use_rotor_components': False, 'nSamples': 0, 'verbose': False}
 
         self.direction_id = direction_id
         self.nTurbines = nTurbines

@@ -35,7 +35,7 @@ if __name__ == "__main__":
     air_density = 1.1716    # kg/m^3
     # wind_direction = 240    # deg (N = 0 deg., using direction FROM, as in met-mast data)
     wind_direction = 270.-0.523599*180./np.pi    # deg (N = 0 deg., using direction FROM, as in met-mast data)
-    print wind_direction
+    print(wind_direction)
     wind_frequency = 1.    # probability of wind in this direction at this speed
 
     # set up problem
@@ -62,19 +62,19 @@ if __name__ == "__main__":
     prob['model_params:cos_spread'] = 1E12         # turns off cosine spread (just needs to be very large)
     # prob['floris_params:useWakeAngle'] = True
     # run the problem
-    print 'start FLORIS run'
+    print('start FLORIS run')
     tic = time.time()
     prob.run()
     toc = time.time()
 
-    print prob['turbineX']
+    print(prob['turbineX'])
 
     # print the results
-    print 'FLORIS calculation took %.06f sec.' % (toc-tic)
-    print 'turbine X positions in wind frame (m): %s' % prob['turbineX']
-    print 'turbine Y positions in wind frame (m): %s' % prob['turbineY']
-    print 'yaw (deg) = ', prob['yaw0']
-    print 'Effective hub velocities (m/s) = ', prob['wtVelocity0']
-    print 'Turbine powers (kW) = ', (prob['wtPower0'])
-    print 'wind farm power (kW): %s' % (prob['dir_power0'])
-    print 'wind farm AEP for this direction and speed (kWh): %s' % prob['AEP']
+    print('FLORIS calculation took {0} sec.'.format(toc-tic))
+    print('turbine X positions in wind frame (m): {0}'.format(prob['turbineX']))
+    print('turbine Y positions in wind frame (m): {0}'.format(prob['turbineY']))
+    print('yaw (deg) = ', prob['yaw0'])
+    print('Effective hub velocities (m/s) = ', prob['wtVelocity0'])
+    print('Turbine powers (kW) = ', prob['wtPower0'])
+    print('wind farm power (kW) = ', prob['dir_power0'])
+    print('wind farm AEP for this direction and speed (kWh) = ', prob['AEP'])

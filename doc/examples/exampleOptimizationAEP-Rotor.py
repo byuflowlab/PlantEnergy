@@ -1,3 +1,6 @@
+# Software example when an explicit connection to a rotor solver is made
+# Currently not functional
+
 from __future__ import print_function
 
 from openmdao.api import Problem, pyOptSparseDriver

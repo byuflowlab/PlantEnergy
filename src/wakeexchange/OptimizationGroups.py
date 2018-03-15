@@ -12,7 +12,7 @@ import numpy as np
 from openmdao.api import Group, IndepVarComp, ExecComp
 
 from wakeexchange.GeneralWindFarmGroups import DirectionGroup, AEPGroup
-from wakeexchange.GeneralWindFarmComponents import SpacingComp, BoundaryComp, calcICC, calcFCR, calcLLC, calcLRC, calcOandM
+from wakeexchange.GeneralWindFarmComponents import SpacingComp, BoundaryComp # cost model functions are defunct: calcICC, calcFCR, calcLLC, calcLRC, calcOandM
 from wakeexchange.floris import floris_wrapper, add_floris_params_IndepVarComps
 
 import warnings

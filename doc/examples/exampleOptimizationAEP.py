@@ -13,6 +13,8 @@ import cProfile
 
 import sys
 
+# takes in a system argument for number of rows/columns in grid
+
 if __name__ == "__main__":
 
     config.floris_single_component = True
