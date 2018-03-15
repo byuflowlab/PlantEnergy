@@ -36,7 +36,7 @@ if __name__ == "__main__":
     air_density = 1.1716    # kg/m^3
     # wind_direction = 240    # deg (N = 0 deg., using direction FROM, as in met-mast data)
     wind_direction = 270.-0.523599*180./np.pi    # deg (N = 0 deg., using direction FROM, as in met-mast data)
-    print wind_direction
+    print(wind_direction)
     wind_frequency = 1.    # probability of wind in this direction at this speed
 
     # set up problem
@@ -72,19 +72,19 @@ if __name__ == "__main__":
     prob['model_params:I'] = 0.1
 
     # run the problem
-    print 'start Bastankhah run'
+    print('start Bastankhah run')
     tic = time.time()
     prob.run()
     toc = time.time()
 
-    print prob['turbineX']
+    print(prob['turbineX'])
 
     # print the results
-    print 'Bastankhah calculation took %.06f sec.' % (toc-tic)
-    print 'turbine X positions in wind frame (m): %s' % prob['turbineX']
-    print 'turbine Y positions in wind frame (m): %s' % prob['turbineY']
-    print 'yaw (deg) = ', prob['yaw0']
-    print 'Effective hub velocities (m/s) = ', prob['wtVelocity0']
-    print 'Turbine powers (kW) = ', (prob['wtPower0'])
-    print 'wind farm power (kW): %s' % (prob['dir_power0'])
-    print 'wind farm AEP for this direction and speed (kWh): %s' % prob['AEP']
+    print('Bastankhah calculation took %.06f sec.'.format(toc-tic))
+    print('turbine X positions in wind frame (m): %s'.format(prob['turbineX']))
+    print('turbine Y positions in wind frame (m): %s'.format(prob['turbineY']))
+    print('yaw (deg) = '.format(prob['yaw0']))
+    print('Effective hub velocities (m/s) = '.format(prob['wtVelocity0']))
+    print('Turbine powers (kW) = '.format((prob['wtPower0'])))
+    print('wind farm power (kW): %s'.format((prob['dir_power0'])))
+    print('wind farm AEP for this direction and speed (kWh): %s'.format(prob['AEP']))

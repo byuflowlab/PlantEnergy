@@ -9,52 +9,9 @@ if MPI:
 from wakeexchange.floris import floris_wrapper, add_floris_params_IndepVarComps
 from wakeexchange.gauss import add_gauss_params_IndepVarComps
 
-
-
-from GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, MUX, WindFarmAEP, DeMUX, \
+from wakeexchange.GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, MUX, WindFarmAEP, DeMUX, \
     CPCT_Interpolate_Gradients_Smooth, WindDirectionPower, add_gen_params_IdepVarComps, \
     CPCT_Interpolate_Gradients
-
-
-class RotorSolveGroup(Group):
-
-    def __init__(self, nTurbines, direction_id=0, datasize=0, differentiable=True,
-                 use_rotor_components=False, nSamples=0, wake_model=floris_wrapper,
-                 wake_model_options=None):
-
-        super(RotorSolveGroup, self).__init__()
-
-        if wake_model_options is None:
-            wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
-                             'nSamples': nSamples}
-
-        from openmdao.core.mpi_wrap import MPI
-
-        # set up iterative solvers
-        epsilon = 1E-6
-        if MPI:
-            self.ln_solver = PetscKSP()
-        else:
-            self.ln_solver = ScipyGMRES()
-        self.nl_solver = NLGaussSeidel()
-        self.ln_solver.options['atol'] = epsilon
-
-        self.add('CtCp', CPCT_Interpolate_Gradients_Smooth(nTurbines, direction_id=direction_id, datasize=datasize),
-                 promotes=['gen_params:*', 'yaw%i' % direction_id,
-                           'wtVelocity%i' % direction_id, 'Cp_out'])
-
-        # TODO refactor the model component instance
-        self.add('floris', wake_model(nTurbines, direction_id=direction_id, wake_model_options=wake_model_options),
-                 promotes=(['model_params:*', 'wind_speed', 'axialInduction',
-                            'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                            'wtVelocity%i' % direction_id]
-                           if (nSamples == 0) else
-                           ['model_params:*', 'wind_speed', 'axialInduction',
-                            'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
-                            'wtVelocity%i' % direction_id, 'wsPositionX', 'wsPositionY', 'wsPositionZ',
-                            'wsArray%i' % direction_id]))
-        self.connect('CtCp.Ct_out', 'floris.Ct')
-
 
 class DirectionGroup(Group):
     """
@@ -245,3 +202,45 @@ class AEPGroup(Group):
             self.connect('windSpeedsDeMUX.output%i' % direction_id, 'direction_group%i.wind_speed' % direction_id)
             self.connect('dir_power%i' % direction_id, 'powerMUX.input%i' % direction_id)
         self.connect('powerMUX.Array', 'dirPowers')
+        
+# Code for interfacing to a BEM solver code
+'''
+class RotorSolveGroup(Group):
+
+    def __init__(self, nTurbines, direction_id=0, datasize=0, differentiable=True,
+                 use_rotor_components=False, nSamples=0, wake_model=floris_wrapper,
+                 wake_model_options=None):
+
+        super(RotorSolveGroup, self).__init__()
+
+        if wake_model_options is None:
+            wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+                             'nSamples': nSamples}
+
+        from openmdao.core.mpi_wrap import MPI
+
+        # set up iterative solvers
+        epsilon = 1E-6
+        if MPI:
+            self.ln_solver = PetscKSP()
+        else:
+            self.ln_solver = ScipyGMRES()
+        self.nl_solver = NLGaussSeidel()
+        self.ln_solver.options['atol'] = epsilon
+
+        self.add('CtCp', CPCT_Interpolate_Gradients_Smooth(nTurbines, direction_id=direction_id, datasize=datasize),
+                 promotes=['gen_params:*', 'yaw%i' % direction_id,
+                           'wtVelocity%i' % direction_id, 'Cp_out'])
+
+        # TODO refactor the model component instance
+        self.add('floris', wake_model(nTurbines, direction_id=direction_id, wake_model_options=wake_model_options),
+                 promotes=(['model_params:*', 'wind_speed', 'axialInduction',
+                            'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
+                            'wtVelocity%i' % direction_id]
+                           if (nSamples == 0) else
+                           ['model_params:*', 'wind_speed', 'axialInduction',
+                            'turbineXw', 'turbineYw', 'rotorDiameter', 'yaw%i' % direction_id, 'hubHeight',
+                            'wtVelocity%i' % direction_id, 'wsPositionX', 'wsPositionY', 'wsPositionZ',
+                            'wsArray%i' % direction_id]))
+        self.connect('CtCp.Ct_out', 'floris.Ct')
+'''

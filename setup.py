@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-from numpy.distutils.core import setup
+from numpy.distutils.core import setup, Extension
 
 setup(
     name='WakeExchange',

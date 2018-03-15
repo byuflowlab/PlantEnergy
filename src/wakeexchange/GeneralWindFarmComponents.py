@@ -344,197 +344,243 @@ class WindFarmAEP(Component):
 
         return J
 
-class calcICC(Component):
-    """
-    Calculates ICC (initial capital cost) for given windfarm layout
-    The initial capital cost is the sum of the turbine system cost and the balance of station cost.
-    Neither cost includes construction financing or financing fees,
-    because these are calculated and added separately through the fixed charge rate.
-    The costs also do not include a debt service reserve fund, which is assumed to be zero for balance sheet financing.
-    """
 
-    def __init__(self, nTurbines, nTopologyPoints):
+class WindDirectionPower(Component):
 
-        super(calcICC, self).__init__()
+    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1.,
+                 cp_curve_spline=None):
 
-        # Add inputs
-        self.add_param('turbineX', val=np.zeros(nTurbines),
-                       desc='x coordinates of turbines in wind dir. ref. frame')
-        self.add_param('turbineY', val=np.zeros(nTurbines),
-                       desc='y coordinates of turbines in wind dir. ref. frame')
+        super(WindDirectionPower, self).__init__()
 
-        self.add_param('hubHeight', val=np.zeros(nTurbines), units='m')
+        # define class attributes
+        self.differentiable = differentiable
+        self.nTurbines = nTurbines
+        self.direction_id = direction_id
+        self.use_rotor_components = use_rotor_components
+        self.cp_points = cp_points
+        self.cp_curve_spline = cp_curve_spline
 
-        self.add_param('rotorDiameter', val=np.zeros(nTurbines), units='m')
+        # set finite difference options (only used for testing)
+        self.deriv_options['check_form'] = 'central'
+        self.deriv_options['check_step_size'] = 1.0e-6
+        self.deriv_options['check_step_calc'] = 'relative'
 
-        self.add_param('topologyX', val=np.zeros(nTopologyPoints),
-                       desc = 'x coordiantes of topology')
-        self.add_param('topologyY', val=np.zeros(nTopologyPoints),
-                       desc = 'y coordiantes of topology')
-        self.add_param('topologyZ', val=np.zeros(nTopologyPoints),
-                       desc = 'z coordiantes of topology')
+        if not differentiable:
+            self.deriv_options['type'] = 'fd'
+            self.deriv_options['form'] = 'forward'
 
-        # import topology information
+        self.add_param('air_density', 1.1716, units='kg/(m*m*m)', desc='air density in free stream')
+        self.add_param('rotorDiameter', np.zeros(nTurbines) + 126.4, units='m', desc='rotor diameters of all turbine')
+        self.add_param('Cp', np.zeros(nTurbines)+(0.7737/0.944) * 4.0 * 1.0/3.0 * np.power((1 - 1.0/3.0), 2), desc='power coefficient for all turbines')
+        self.add_param('generatorEfficiency', np.zeros(nTurbines)+0.944, desc='generator efficiency of all turbines')
+        self.add_param('wtVelocity%i' % direction_id, np.zeros(nTurbines), units='m/s',
+                       desc='effective hub velocity for each turbine')
 
-        # define output
-        self.add_output('ICC', val=0.0, units='$', desc='Initial Capital Cost')
+        self.add_param('rated_power', np.ones(nTurbines)*5000., units='kW',
+                       desc='rated power for each turbine', pass_by_obj=True)
+        self.add_param('cut_in_speed', np.ones(nTurbines) * 3.0, units='m/s',
+                       desc='cut-in speed for each turbine', pass_by_obj=True)
+        self.add_param('cp_curve_cp', np.zeros(cp_points),
+                       desc='cp as a function of wind speed', pass_by_obj=True)
+        self.add_param('cp_curve_vel', np.ones(cp_points), units='m/s',
+                       desc='vel corresponding to cp curve points', pass_by_obj=True)
+        # self.add_param('cp_curve_spline', None, units='m/s',
+        #                desc='spline corresponding to cp curve', pass_by_obj=True)
+
+        # outputs
+        self.add_output('wtPower%i' % direction_id, np.zeros(nTurbines), units='kW', desc='power output of each turbine')
+        self.add_output('dir_power%i' % direction_id, 0.0, units='kW', desc='total power output of the wind farm')
 
     def solve_nonlinear(self, params, unknowns, resids):
 
+        # obtain necessary inputs
+        use_rotor_components = self.use_rotor_components
+        direction_id = self.direction_id
+        nTurbines = self.nTurbines
+        wtVelocity = self.params['wtVelocity%i' % direction_id]
+        rated_power = params['rated_power']
+        cut_in_speed = params['cut_in_speed']
+        air_density = params['air_density']
+        rotorArea = 0.25*np.pi*np.power(params['rotorDiameter'], 2)
+        Cp = params['Cp']
+        generatorEfficiency = params['generatorEfficiency']
 
-        turbineX = params['turbineX']
-        turbineY = params['turbineY']
-        nTurbines = turbineX.size
+        cp_curve_cp = params['cp_curve_cp']
+        cp_curve_vel = params['cp_curve_vel']
+        # cp_curve_spline = params['cp_curve_spline']
+        cp_curve_spline = self.cp_curve_spline
 
-        topologyX = params['topologyX']
-        topologyY = params['topologyY']
-        topologyZ = params['topologyZ']
+        if self.cp_points > 1.:
+            # print('entered Cp')
+            if cp_curve_spline is None:
+                for i in np.arange(0, nTurbines):
+                    Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
+                    # Cp[i] = spl(wtVelocity[i])
+            else:
+                # print('using spline')
+                Cp = cp_curve_spline(wtVelocity)
 
-        #calculate ICC
-        ICCpartsx = np.zeros([nTurbines,1])
-        ICCpartsy = np.zeros([nTurbines,1])
+        # calculate initial values for wtPower (W)
+        wtPower = generatorEfficiency*(0.5*air_density*rotorArea*Cp*np.power(wtVelocity, 3))
 
-        #need to come up with good way to interpolate between points
-        #right now, using linear interpolation
-        mx = (topologyZ[2]-topologyZ[0])/(topologyX[2]-topologyX[0])
+        # adjust units from W to kW
+        wtPower /= 1000.0
 
-        my = (topologyZ[2]-topologyZ[0])/(topologyY[2]-topologyY[0])
+        # rated_velocity = np.power(1000.*rated_power/(generator_efficiency*(0.5*air_density*rotorArea*Cp)), 1./3.)
+        #
+        # dwt_power_dvelocitiesTurbines = np.eye(nTurbines)*generator_efficiency*(1.5*air_density*rotorArea*Cp *
+        #                                                                         np.power(wtVelocity, 2))
+        # dwt_power_dvelocitiesTurbines /= 1000.
+
+        # adjust wt power based on rated power
+        if not use_rotor_components:
+            for i in range(0, nTurbines):
+                if wtPower[i] >= rated_power[i]:
+                    wtPower[i] = rated_power[i]
 
         for i in range(0, nTurbines):
-            ICCpartsx[i] = mx*(turbineX[i]-topologyX[2])+topologyZ[2]
-            ICCpartsy[i] = mx*(turbineY[i]-topologyY[2])+topologyZ[2]
-
-        unknowns['ICC'] = sum(ICCpartsx) +  sum(ICCpartsy)
-
-class calcFCR(Component):
-    """
-    Calculates FCR (fixed charge rate) for given windfarm layout
-    """
-
-    def __init__(self, nTurbines):
-
-        super(calcFCR, self).__init__()
-
-        # Add inputs
-        self.add_param('turbineX', val=np.zeros(nTurbines),
-                       desc='x coordinates of turbines in wind dir. ref. frame')
-        self.add_param('turbineY', val=np.zeros(nTurbines),
-                       desc='y coordinates of turbines in wind dir. ref. frame')
-
-        # define output
-        self.add_output('FCR', val=0.0, desc='Fixed Charge Rate')
-
-    def solve_nonlinear(self, params, unknowns, resids):
+            if wtVelocity[i] < cut_in_speed[i]:
+                wtPower[i] = 0.0
 
 
-        turbineX = params['turbineX']
-        turbineY = params['turbineY']
-        nTurbines = turbineX.size
-
-        #calculate FCR
-        unknowns['FCR'] = 10000.0
-
-class calcLLC(Component):
-    """
-    Calculates LLC (landlease cost) for given windfarm layout
-    Annual operating expenses (AOE) include land or ocean bottom lease cost, levelized O&M cost,
-    and levelized replacement/overhaul cost (LRC). Land lease costs (LLC) are the rental or lease fees
-    charged for the turbine installation. LLC is expressed in units of $/kWh.
-    """
-
-    def __init__(self, nTurbines):
-
-        super(calcLLC, self).__init__()
-
-        # Add inputs
-        self.add_param('turbineX', val=np.zeros(nTurbines),
-                       desc='x coordinates of turbines in wind dir. ref. frame')
-        self.add_param('turbineY', val=np.zeros(nTurbines),
-                       desc='y coordinates of turbines in wind dir. ref. frame')
-
-        # define output
-        self.add_output('LLC', val=0.0, units='$/kWh', desc='Landlease Cost')
-
-    def solve_nonlinear(self, params, unknowns, resids):
+        # if np.any(rated_velocity+1.) >= np.any(wtVelocity) >= np.any(rated_velocity-1.) and not \
+        #         use_rotor_components:
+        #     for i in range(0, nTurbines):
+        #         if wtVelocity[i] >= rated_velocity[i]+1.:
+        #             spline_start_power = generator_efficiency[i]*(0.5*air_density*rotorArea[i]*Cp[i]*np.power(rated_velocity[i]-1., 3))
+        #             deriv_spline_start_power = 3.*generator_efficiency[i]*(0.5*air_density*rotorArea[i]*Cp[i]*np.power(rated_velocity[i]-1., 2))
+        #             spline_end_power = generator_efficiency[i]*(0.5*air_density*rotorArea[i]*Cp[i]*np.power(rated_velocity[i]+1., 3))
+        #             wtPower[i], deriv = hermite_spline(wtVelocity[i], rated_velocity[i]-1.,
+        #                                                                      rated_velocity[i]+1., spline_start_power,
+        #                                                                      deriv_spline_start_power, spline_end_power, 0.0)
+        #             dwt_power_dvelocitiesTurbines[i][i] = deriv/1000.
+        #
+        # if np.any(wtVelocity) >= np.any(rated_velocity+1.) and not use_rotor_components:
+        #     for i in range(0, nTurbines):
+        #         if wtVelocity[i] >= rated_velocity[i]+1.:
+        #             wtPower = rated_power
+        #             dwt_power_dvelocitiesTurbines[i][i] = 0.0
 
 
-        turbineX = params['turbineX']
-        turbineY = params['turbineY']
-        nTurbines = turbineX.size
 
-        #calculate LLC
-        unknowns['LLC'] = 10000.0
+        # self.dwt_power_dvelocitiesTurbines = dwt_power_dvelocitiesTurbines
 
-class calcOandM(Component):
-    """
-    Calculates O&M (levelized operation & maintenance cost) for given windfarm layout
-    A component of AOE that is larger than the LLC is O&M cost. O&M is expressed in units of $/kWh.
-    The O&M cost normally includes
-        - labor, parts, and supplies for scheduled turbine maintenance
-        - labor, parts, and supplies for unscheduled turbine maintenance
-        - parts and supplies for equipment and facilities maintenance
-        - labor for administration and support.
-    """
+        # calculate total power for this direction
+        dir_power = np.sum(wtPower)
 
-    def __init__(self, nTurbines):
+        # pass out results
+        unknowns['wtPower%i' % direction_id] = wtPower
+        unknowns['dir_power%i' % direction_id] = dir_power
 
-        super(calcOandM, self).__init__()
+        # print(wtPower)
 
-        # Add inputs
-        self.add_param('turbineX', val=np.zeros(nTurbines),
-                       desc='x coordinates of turbines in wind dir. ref. frame')
-        self.add_param('turbineY', val=np.zeros(nTurbines),
-                       desc='y coordinates of turbines in wind dir. ref. frame')
+    def linearize(self, params, unknowns, resids):
 
-        # define output
-        self.add_output('OandM', val=0.0, units='$', desc='levelized O&M cost')
+        # obtain necessary inputs
+        direction_id = self.direction_id
+        use_rotor_components = self.use_rotor_components
+        nTurbines = self.nTurbines
+        wtVelocity = self.params['wtVelocity%i' % direction_id]
+        air_density = params['air_density']
+        rotorDiameter = params['rotorDiameter']
+        rotorArea = 0.25*np.pi*np.power(rotorDiameter, 2)
+        Cp = params['Cp']
+        generatorEfficiency = params['generatorEfficiency']
+        rated_power = params['rated_power']
+        cut_in_speed = params['cut_in_speed']
+        wtPower = unknowns['wtPower%i' % direction_id]
 
-    def solve_nonlinear(self, params, unknowns, resids):
+        cp_curve_cp = params['cp_curve_cp']
+        cp_curve_vel = params['cp_curve_vel']
 
+        # cp_curve_spline = params['cp_curve_spline']
+        cp_curve_spline = self.cp_curve_spline
 
-        turbineX = params['turbineX']
-        turbineY = params['turbineY']
-        nTurbines = turbineX.size
+        dCpdV = np.ones_like(Cp)
 
-        #calculate LLC
+        if self.cp_points > 1.:
+            # print('entered Cp')
+            if cp_curve_spline is None:
+                # print('using interp')
+                for i in np.arange(0, nTurbines):
+                    Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
+                    # Cp[i] = spl(wtVelocity[i])
+                    dv = 1E-6
+                    dCpdV[i] = (np.interp(wtVelocity[i]+dv, cp_curve_vel, cp_curve_cp) -
+                             np.interp(wtVelocity[i]- dv, cp_curve_vel, cp_curve_cp))/(2.*dv)
+            else:
+                # print('using spline')
+                # get Cp from the spline
 
-        #need to know area of boundary?
+                dCpdV_spline = cp_curve_spline.derivative()
 
-        unknowns['OandM'] = 10000.0
+                Cp = np.zeros_like(wtVelocity)
+                dCpdV = np.zeros_like(wtVelocity)
+                for i in np.arange(0, len(wtVelocity)):
+                 Cp[i] = cp_curve_spline(wtVelocity[i])
+                 dCpdV[i] = dCpdV_spline(wtVelocity[i])
 
-class calcLRC(Component):
-    """
-    Calculates LRC (levelized replacement/overhaul cost) for given windfarm layout
-    LRC distributes the cost of major replacements and overhauls over the life of the wind turbine and is expressed in $/kW machine rating.
-    """
-
-    def __init__(self, nTurbines):
-
-        super(calcLRC, self).__init__()
-
-        # Add inputs
-        self.add_param('turbineX', val=np.zeros(nTurbines),
-                       desc='x coordinates of turbines in wind dir. ref. frame')
-        self.add_param('turbineY', val=np.zeros(nTurbines),
-                       desc='y coordinates of turbines in wind dir. ref. frame')
-
-        self.add_param('hubHeight', val=np.zeros(nTurbines), units='m')
-
-        self.add_param('rotorDiameter', val=np.zeros(nTurbines), units='m')
+                # get dCp/dV from the spline
 
 
-        # define output
-        self.add_output('LRC', val=0.0, units='$', desc='Levelized Replacement Cost')
 
-    def solve_nonlinear(self, params, unknowns, resids):
+        # calcuate initial gradient values
+        dwtPower_dwtVelocity = np.eye(nTurbines)*0.5*generatorEfficiency*air_density*rotorArea*\
+                               (3.*Cp*np.power(wtVelocity, 2) + np.power(wtVelocity,3)*dCpdV)
+        dwtPower_dCp = np.eye(nTurbines)*generatorEfficiency*(0.5*air_density*rotorArea*np.power(wtVelocity, 3))
+        dwtPower_drotorDiameter = np.eye(nTurbines)*generatorEfficiency*(0.5*air_density*(0.5*np.pi*rotorDiameter)*Cp *
+                                                                           np.power(wtVelocity, 3))
+        # dwt_power_dvelocitiesTurbines = self.dwt_power_dvelocitiesTurbines
 
+        # adjust gradients for unit conversion from W to kW
+        dwtPower_dwtVelocity /= 1000.
+        dwtPower_dCp /= 1000.
+        dwtPower_drotorDiameter /= 1000.
 
-        turbineX = params['turbineX']
-        turbineY = params['turbineY']
-        nTurbines = turbineX.size
+        # rated_velocity = np.power(1000.*rated_power/(generator_efficiency*(0.5*air_density*rotorArea*Cp)), 1./3.)
 
-        #calculate LLC
-        unknowns['LRC'] = 10000.0
+        # if np.any(rated_velocity+1.) >= np.any(wtVelocity) >= np.any(rated_velocity-1.) and not \
+        #         use_rotor_components:
+        #
+        #     spline_start_power = generator_efficiency*(0.5*air_density*rotorArea*Cp*np.power(rated_velocity-1., 3))
+        #     deriv_spline_start_power = 3.*generator_efficiency*(0.5*air_density*rotorArea*Cp*np.power(rated_velocity-1., 2))
+        #     spline_end_power = generator_efficiency*(0.5*air_density*rotorArea*Cp*np.power(rated_velocity+1., 3))
+        #     wtPower, dwt_power_dvelocitiesTurbines = hermite_spline(wtVelocity, rated_velocity-1.,
+        #                                                              rated_velocity+1., spline_start_power,
+        #                                                              deriv_spline_start_power, spline_end_power, 0.0)
+
+        # set gradients for turbines above rated power to zero
+        for i in range(0, nTurbines):
+            if wtPower[i] >= rated_power[i]:
+                dwtPower_dwtVelocity[i][i] = 0.0
+                dwtPower_dCp[i][i] = 0.0
+                dwtPower_drotorDiameter[i][i] = 0.0
+
+        # set gradients for turbines above rated power to zero
+        for i in range(0, nTurbines):
+            if wtVelocity[i] < cut_in_speed[i]:
+                dwtPower_dwtVelocity[i][i] = 0.0
+                dwtPower_dCp[i][i] = 0.0
+                dwtPower_drotorDiameter[i][i] = 0.0
+
+        # compile elements of Jacobian
+        ddir_power_dwtVelocity = np.array([np.sum(dwtPower_dwtVelocity, 0)])
+        ddir_power_dCp = np.array([np.sum(dwtPower_dCp, 0)])
+        ddir_power_drotorDiameter = np.array([np.sum(dwtPower_drotorDiameter, 0)])
+
+        # initialize Jacobian dict
+        J = {}
+
+        # populate Jacobian dict
+        J['wtPower%i' % direction_id, 'wtVelocity%i' % direction_id] = dwtPower_dwtVelocity
+        J['wtPower%i' % direction_id, 'Cp'] = dwtPower_dCp
+        J['wtPower%i' % direction_id, 'rotorDiameter'] = dwtPower_drotorDiameter
+
+        J['dir_power%i' % direction_id, 'wtVelocity%i' % direction_id] = ddir_power_dwtVelocity
+        J['dir_power%i' % direction_id, 'Cp'] = ddir_power_dCp
+        J['dir_power%i' % direction_id, 'rotorDiameter'] = ddir_power_drotorDiameter
+
+        return J
 
 
 class SpacingComp(Component):
@@ -733,6 +779,101 @@ class BoundaryComp(Component):
         J['boundaryDistances', 'turbineY'] = dfaceDistance_dy
 
         return J
+
+
+def calculate_boundary(vertices):
+
+    # find the points that actually comprise a convex hull
+    hull = ConvexHull(list(vertices))
+
+    # keep only vertices that actually comprise a convex hull and arrange in CCW order
+    vertices = vertices[hull.vertices]
+
+    # get the real number of vertices
+    nVertices = vertices.shape[0]
+
+    # initialize normals array
+    unit_normals = np.zeros([nVertices, 2])
+
+    # determine if point is inside or outside of each face, and distance from each face
+    for j in range(0, nVertices):
+
+        # calculate the unit normal vector of the current face (taking points CCW)
+        if j < nVertices - 1:  # all but the set of point that close the shape
+            normal = np.array([vertices[j+1, 1]-vertices[j, 1],
+                               -(vertices[j+1, 0]-vertices[j, 0])])
+            unit_normals[j] = normal/np.linalg.norm(normal)
+        else:   # the set of points that close the shape
+            normal = np.array([vertices[0, 1]-vertices[j, 1],
+                               -(vertices[0, 0]-vertices[j, 0])])
+            unit_normals[j] = normal/np.linalg.norm(normal)
+
+    return vertices, unit_normals
+
+
+def calculate_distance(points, vertices, unit_normals, return_bool=False):
+
+    """
+    :param points: points that you want to calculate the distance from to the faces of the convex hull
+    :param vertices: vertices of the convex hull CCW in order s.t. vertices[i] -> first point of face for
+           unit_normals[i]
+    :param unit_normals: unit normal vector for each face CCW where vertices[i] is first point of face
+    :param return_bool: set to True to return an array of bools where True means the corresponding point
+           is inside the hull
+    :return face_distace: signed perpendicular distance from each point to each face; + is inside
+    :return [inside]: (optional) an array of zeros and ones where 1.0 means the corresponding point is inside the hull
+    """
+
+    # print points.shape, vertices.shape, unit_normals.shape
+
+    nPoints = points.shape[0]
+    nVertices = vertices.shape[0]
+
+    # initialize array to hold distances from each point to each face
+    face_distance = np.zeros([nPoints, nVertices])
+
+    if not return_bool:
+        # loop through points and find distance to each face
+        for i in range(0, nPoints):
+
+            # determine if point is inside or outside of each face, and distance from each face
+            for j in range(0, nVertices):
+
+                # define the vector from the point of interest to the first point of the face
+                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]])
+
+                # find perpendicular distance from point to current surface (vector projection)
+                d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
+
+                # calculate the sign of perpendicular distance from point to current face (+ is inside, - is outside)
+                face_distance[i, j] = np.vdot(d_vec, unit_normals[j])
+
+        return face_distance
+
+    else:
+        # initialize array to hold boolean indicating whether a point is inside the hull or not
+        inside = np.zeros(nPoints)
+
+        # loop through points and find distance to each face
+        for i in range(0, nPoints):
+
+            # determine if point is inside or outside of each face, and distance from each face
+            for j in range(0, nVertices):
+
+                # define the vector from the point of interest to the first point of the face
+                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]])
+
+                # find perpendicular distance from point to current surface (vector projection)
+                d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
+
+                # calculate the sign of perpendicular distance from point to current face (+ is inside, - is outside)
+                face_distance[i, j] = np.vdot(d_vec, unit_normals[j])
+
+            # check if the point is inside the convex hull by checking the sign of the distance
+            if np.all(face_distance[i] >= 0):
+                inside[i] = 1.0
+
+        return face_distance, inside
 
 
 class MUX(Component):
@@ -1045,430 +1186,202 @@ class CPCT_Interpolate_Gradients_Smooth(Component):
         return J
 
 
-class WindDirectionPower(Component):
 
-    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1.,
-                 cp_curve_spline=None):
+# legacy code for simple COE calculations - should be done more formally
+'''
+class calcICC(Component):
+    """
+    Calculates ICC (initial capital cost) for given windfarm layout
+    The initial capital cost is the sum of the turbine system cost and the balance of station cost.
+    Neither cost includes construction financing or financing fees,
+    because these are calculated and added separately through the fixed charge rate.
+    The costs also do not include a debt service reserve fund, which is assumed to be zero for balance sheet financing.
+    """
 
-        super(WindDirectionPower, self).__init__()
+    def __init__(self, nTurbines, nTopologyPoints):
 
-        # define class attributes
-        self.differentiable = differentiable
-        self.nTurbines = nTurbines
-        self.direction_id = direction_id
-        self.use_rotor_components = use_rotor_components
-        self.cp_points = cp_points
-        self.cp_curve_spline = cp_curve_spline
+        super(calcICC, self).__init__()
 
-        # set finite difference options (only used for testing)
-        self.deriv_options['check_form'] = 'central'
-        self.deriv_options['check_step_size'] = 1.0e-6
-        self.deriv_options['check_step_calc'] = 'relative'
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
 
-        if not differentiable:
-            self.deriv_options['type'] = 'fd'
-            self.deriv_options['form'] = 'forward'
+        self.add_param('hubHeight', val=np.zeros(nTurbines), units='m')
 
-        self.add_param('air_density', 1.1716, units='kg/(m*m*m)', desc='air density in free stream')
-        self.add_param('rotorDiameter', np.zeros(nTurbines) + 126.4, units='m', desc='rotor diameters of all turbine')
-        self.add_param('Cp', np.zeros(nTurbines)+(0.7737/0.944) * 4.0 * 1.0/3.0 * np.power((1 - 1.0/3.0), 2), desc='power coefficient for all turbines')
-        self.add_param('generatorEfficiency', np.zeros(nTurbines)+0.944, desc='generator efficiency of all turbines')
-        self.add_param('wtVelocity%i' % direction_id, np.zeros(nTurbines), units='m/s',
-                       desc='effective hub velocity for each turbine')
+        self.add_param('rotorDiameter', val=np.zeros(nTurbines), units='m')
 
-        self.add_param('rated_power', np.ones(nTurbines)*5000., units='kW',
-                       desc='rated power for each turbine', pass_by_obj=True)
-        self.add_param('cut_in_speed', np.ones(nTurbines) * 3.0, units='m/s',
-                       desc='cut-in speed for each turbine', pass_by_obj=True)
-        self.add_param('cp_curve_cp', np.zeros(cp_points),
-                       desc='cp as a function of wind speed', pass_by_obj=True)
-        self.add_param('cp_curve_vel', np.ones(cp_points), units='m/s',
-                       desc='vel corresponding to cp curve points', pass_by_obj=True)
-        # self.add_param('cp_curve_spline', None, units='m/s',
-        #                desc='spline corresponding to cp curve', pass_by_obj=True)
+        self.add_param('topologyX', val=np.zeros(nTopologyPoints),
+                       desc = 'x coordiantes of topology')
+        self.add_param('topologyY', val=np.zeros(nTopologyPoints),
+                       desc = 'y coordiantes of topology')
+        self.add_param('topologyZ', val=np.zeros(nTopologyPoints),
+                       desc = 'z coordiantes of topology')
 
-        # outputs
-        self.add_output('wtPower%i' % direction_id, np.zeros(nTurbines), units='kW', desc='power output of each turbine')
-        self.add_output('dir_power%i' % direction_id, 0.0, units='kW', desc='total power output of the wind farm')
+        # import topology information
+
+        # define output
+        self.add_output('ICC', val=0.0, units='$', desc='Initial Capital Cost')
 
     def solve_nonlinear(self, params, unknowns, resids):
 
-        # obtain necessary inputs
-        use_rotor_components = self.use_rotor_components
-        direction_id = self.direction_id
-        nTurbines = self.nTurbines
-        wtVelocity = self.params['wtVelocity%i' % direction_id]
-        rated_power = params['rated_power']
-        cut_in_speed = params['cut_in_speed']
-        air_density = params['air_density']
-        rotorArea = 0.25*np.pi*np.power(params['rotorDiameter'], 2)
-        Cp = params['Cp']
-        generatorEfficiency = params['generatorEfficiency']
 
-        cp_curve_cp = params['cp_curve_cp']
-        cp_curve_vel = params['cp_curve_vel']
-        # cp_curve_spline = params['cp_curve_spline']
-        cp_curve_spline = self.cp_curve_spline
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
 
-        if self.cp_points > 1.:
-            # print('entered Cp')
-            if cp_curve_spline is None:
-                for i in np.arange(0, nTurbines):
-                    Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
-                    # Cp[i] = spl(wtVelocity[i])
-            else:
-                # print('using spline')
-                Cp = cp_curve_spline(wtVelocity)
+        topologyX = params['topologyX']
+        topologyY = params['topologyY']
+        topologyZ = params['topologyZ']
 
-        # calculate initial values for wtPower (W)
-        wtPower = generatorEfficiency*(0.5*air_density*rotorArea*Cp*np.power(wtVelocity, 3))
+        #calculate ICC
+        ICCpartsx = np.zeros([nTurbines,1])
+        ICCpartsy = np.zeros([nTurbines,1])
 
-        # adjust units from W to kW
-        wtPower /= 1000.0
+        #need to come up with good way to interpolate between points
+        #right now, using linear interpolation
+        mx = (topologyZ[2]-topologyZ[0])/(topologyX[2]-topologyX[0])
 
-        # rated_velocity = np.power(1000.*rated_power/(generator_efficiency*(0.5*air_density*rotorArea*Cp)), 1./3.)
-        #
-        # dwt_power_dvelocitiesTurbines = np.eye(nTurbines)*generator_efficiency*(1.5*air_density*rotorArea*Cp *
-        #                                                                         np.power(wtVelocity, 2))
-        # dwt_power_dvelocitiesTurbines /= 1000.
-
-        # adjust wt power based on rated power
-        if not use_rotor_components:
-            for i in range(0, nTurbines):
-                if wtPower[i] >= rated_power[i]:
-                    wtPower[i] = rated_power[i]
+        my = (topologyZ[2]-topologyZ[0])/(topologyY[2]-topologyY[0])
 
         for i in range(0, nTurbines):
-            if wtVelocity[i] < cut_in_speed[i]:
-                wtPower[i] = 0.0
+            ICCpartsx[i] = mx*(turbineX[i]-topologyX[2])+topologyZ[2]
+            ICCpartsy[i] = mx*(turbineY[i]-topologyY[2])+topologyZ[2]
 
+        unknowns['ICC'] = sum(ICCpartsx) +  sum(ICCpartsy)
 
-        # if np.any(rated_velocity+1.) >= np.any(wtVelocity) >= np.any(rated_velocity-1.) and not \
-        #         use_rotor_components:
-        #     for i in range(0, nTurbines):
-        #         if wtVelocity[i] >= rated_velocity[i]+1.:
-        #             spline_start_power = generator_efficiency[i]*(0.5*air_density*rotorArea[i]*Cp[i]*np.power(rated_velocity[i]-1., 3))
-        #             deriv_spline_start_power = 3.*generator_efficiency[i]*(0.5*air_density*rotorArea[i]*Cp[i]*np.power(rated_velocity[i]-1., 2))
-        #             spline_end_power = generator_efficiency[i]*(0.5*air_density*rotorArea[i]*Cp[i]*np.power(rated_velocity[i]+1., 3))
-        #             wtPower[i], deriv = hermite_spline(wtVelocity[i], rated_velocity[i]-1.,
-        #                                                                      rated_velocity[i]+1., spline_start_power,
-        #                                                                      deriv_spline_start_power, spline_end_power, 0.0)
-        #             dwt_power_dvelocitiesTurbines[i][i] = deriv/1000.
-        #
-        # if np.any(wtVelocity) >= np.any(rated_velocity+1.) and not use_rotor_components:
-        #     for i in range(0, nTurbines):
-        #         if wtVelocity[i] >= rated_velocity[i]+1.:
-        #             wtPower = rated_power
-        #             dwt_power_dvelocitiesTurbines[i][i] = 0.0
-
-
-
-        # self.dwt_power_dvelocitiesTurbines = dwt_power_dvelocitiesTurbines
-
-        # calculate total power for this direction
-        dir_power = np.sum(wtPower)
-
-        # pass out results
-        unknowns['wtPower%i' % direction_id] = wtPower
-        unknowns['dir_power%i' % direction_id] = dir_power
-
-        # print(wtPower)
-
-    def linearize(self, params, unknowns, resids):
-
-        # obtain necessary inputs
-        direction_id = self.direction_id
-        use_rotor_components = self.use_rotor_components
-        nTurbines = self.nTurbines
-        wtVelocity = self.params['wtVelocity%i' % direction_id]
-        air_density = params['air_density']
-        rotorDiameter = params['rotorDiameter']
-        rotorArea = 0.25*np.pi*np.power(rotorDiameter, 2)
-        Cp = params['Cp']
-        generatorEfficiency = params['generatorEfficiency']
-        rated_power = params['rated_power']
-        cut_in_speed = params['cut_in_speed']
-        wtPower = unknowns['wtPower%i' % direction_id]
-
-        cp_curve_cp = params['cp_curve_cp']
-        cp_curve_vel = params['cp_curve_vel']
-
-        # cp_curve_spline = params['cp_curve_spline']
-        cp_curve_spline = self.cp_curve_spline
-
-        dCpdV = np.ones_like(Cp)
-
-        if self.cp_points > 1.:
-            # print('entered Cp')
-            if cp_curve_spline is None:
-                # print('using interp')
-                for i in np.arange(0, nTurbines):
-                    Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
-                    # Cp[i] = spl(wtVelocity[i])
-                    dv = 1E-6
-                    dCpdV[i] = (np.interp(wtVelocity[i]+dv, cp_curve_vel, cp_curve_cp) -
-                             np.interp(wtVelocity[i]- dv, cp_curve_vel, cp_curve_cp))/(2.*dv)
-            else:
-                # print('using spline')
-                # get Cp from the spline
-
-                dCpdV_spline = cp_curve_spline.derivative()
-
-                Cp = np.zeros_like(wtVelocity)
-                dCpdV = np.zeros_like(wtVelocity)
-                for i in np.arange(0, len(wtVelocity)):
-                 Cp[i] = cp_curve_spline(wtVelocity[i])
-                 dCpdV[i] = dCpdV_spline(wtVelocity[i])
-
-                # get dCp/dV from the spline
-
-
-
-        # calcuate initial gradient values
-        dwtPower_dwtVelocity = np.eye(nTurbines)*0.5*generatorEfficiency*air_density*rotorArea*\
-                               (3.*Cp*np.power(wtVelocity, 2) + np.power(wtVelocity,3)*dCpdV)
-        dwtPower_dCp = np.eye(nTurbines)*generatorEfficiency*(0.5*air_density*rotorArea*np.power(wtVelocity, 3))
-        dwtPower_drotorDiameter = np.eye(nTurbines)*generatorEfficiency*(0.5*air_density*(0.5*np.pi*rotorDiameter)*Cp *
-                                                                           np.power(wtVelocity, 3))
-        # dwt_power_dvelocitiesTurbines = self.dwt_power_dvelocitiesTurbines
-
-        # adjust gradients for unit conversion from W to kW
-        dwtPower_dwtVelocity /= 1000.
-        dwtPower_dCp /= 1000.
-        dwtPower_drotorDiameter /= 1000.
-
-        # rated_velocity = np.power(1000.*rated_power/(generator_efficiency*(0.5*air_density*rotorArea*Cp)), 1./3.)
-
-        # if np.any(rated_velocity+1.) >= np.any(wtVelocity) >= np.any(rated_velocity-1.) and not \
-        #         use_rotor_components:
-        #
-        #     spline_start_power = generator_efficiency*(0.5*air_density*rotorArea*Cp*np.power(rated_velocity-1., 3))
-        #     deriv_spline_start_power = 3.*generator_efficiency*(0.5*air_density*rotorArea*Cp*np.power(rated_velocity-1., 2))
-        #     spline_end_power = generator_efficiency*(0.5*air_density*rotorArea*Cp*np.power(rated_velocity+1., 3))
-        #     wtPower, dwt_power_dvelocitiesTurbines = hermite_spline(wtVelocity, rated_velocity-1.,
-        #                                                              rated_velocity+1., spline_start_power,
-        #                                                              deriv_spline_start_power, spline_end_power, 0.0)
-
-        # set gradients for turbines above rated power to zero
-        for i in range(0, nTurbines):
-            if wtPower[i] >= rated_power[i]:
-                dwtPower_dwtVelocity[i][i] = 0.0
-                dwtPower_dCp[i][i] = 0.0
-                dwtPower_drotorDiameter[i][i] = 0.0
-
-        # set gradients for turbines above rated power to zero
-        for i in range(0, nTurbines):
-            if wtVelocity[i] < cut_in_speed[i]:
-                dwtPower_dwtVelocity[i][i] = 0.0
-                dwtPower_dCp[i][i] = 0.0
-                dwtPower_drotorDiameter[i][i] = 0.0
-
-        # compile elements of Jacobian
-        ddir_power_dwtVelocity = np.array([np.sum(dwtPower_dwtVelocity, 0)])
-        ddir_power_dCp = np.array([np.sum(dwtPower_dCp, 0)])
-        ddir_power_drotorDiameter = np.array([np.sum(dwtPower_drotorDiameter, 0)])
-
-        # initialize Jacobian dict
-        J = {}
-
-        # populate Jacobian dict
-        J['wtPower%i' % direction_id, 'wtVelocity%i' % direction_id] = dwtPower_dwtVelocity
-        J['wtPower%i' % direction_id, 'Cp'] = dwtPower_dCp
-        J['wtPower%i' % direction_id, 'rotorDiameter'] = dwtPower_drotorDiameter
-
-        J['dir_power%i' % direction_id, 'wtVelocity%i' % direction_id] = ddir_power_dwtVelocity
-        J['dir_power%i' % direction_id, 'Cp'] = ddir_power_dCp
-        J['dir_power%i' % direction_id, 'rotorDiameter'] = ddir_power_drotorDiameter
-
-        return J
-
-#
-# def calculate_boundary(vertices):
-#
-#     # find the points that actually comprise a convex hull
-#     hull = ConvexHull(list(vertices))
-#
-#     # keep only vertices that actually comprise a convex hull and arrange in CCW order
-#     vertices = vertices[hull.vertices]
-#
-#     # get the real number of vertices
-#     nVertices = vertices.shape[0]
-#
-#     # initialize normals array
-#     unit_normals = np.zeros([nVertices, 2])
-#
-#     # determine if point is inside or outside of each face, and distance from each face
-#     for j in range(0, nVertices):
-#
-#         # calculate the unit normal vector of the current face (taking points CCW)
-#         if j < nVertices - 1:  # all but the set of point that close the shape
-#             normal = np.array([vertices[j+1, 1]-vertices[j, 1],
-#                                -(vertices[j+1, 0]-vertices[j, 0])])
-#             unit_normals[j] = normal/np.linalg.norm(normal)
-#         else:   # the set of points that close the shape
-#             normal = np.array([vertices[0, 1]-vertices[j, 1],
-#                                -(vertices[0, 0]-vertices[j, 0])])
-#             unit_normals[j] = normal/np.linalg.norm(normal)
-#
-#     return vertices, unit_normals
-#
-#
-# def calculate_distance(points, vertices, unit_normals, return_bool=False):
-#
-#     """
-#     :param points: points that you want to calculate the distance from to the faces of the convex hull
-#     :param vertices: vertices of the convex hull CCW in order s.t. vertices[i] -> first point of face for
-#            unit_normals[i]
-#     :param unit_normals: unit normal vector for each face CCW where vertices[i] is first point of face
-#     :param return_bool: set to True to return an array of bools where True means the corresponding point
-#            is inside the hull
-#     :return face_distace: signed perpendicular distance from each point to each face; + is inside)
-#     :return [inside]: (optional) an array of zeros and ones where 1.0 means the corresponding point is inside the hull
-#     """
-#     print points.shape, vertices.shape, unit_normals.shape
-#     nPoints = len(points[0, :])
-#     nVertices = len(unit_normals)
-#
-#     # initialize array to hold distances from each point to each face
-#     face_distance = np.zeros([nPoints, nVertices])
-#
-#     if not return_bool:
-#         # loop through points and find distance to each face
-#         for i in range(0, nPoints):
-#
-#             # determine if point is inside or outside of each face, and distance from each face
-#             for j in range(0, nVertices):
-#
-#                 # define the vector from the point of interest to the first point of the face
-#                 pa = np.array([vertices[j, 0]-points[0, i], vertices[j, 1]-points[0, i]])
-#
-#                 # find perpendicular distance from point to current surface (vector projection)
-#                 d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
-#
-#                 # calculate the sign of perpendicular distance from point to current face (+ is inside, - is outside)
-#                 face_distance[i, j] = np.vdot(d_vec, unit_normals[j])
-#
-#         return face_distance
-#
-#     else:
-#         # initialize array to hold boolean indicating whether a point is inside the hull or not
-#         inside = np.zeros(nPoints)
-#
-#         # loop through points and find distance to each face
-#         for i in range(0, nPoints):
-#
-#             # determine if point is inside or outside of each face, and distance from each face
-#             for j in range(0, nVertices):
-#
-#                 # define the vector from the point of interest to the first point of the face
-#                 pa = np.array([vertices[j, 0]-points[0, i], vertices[j, 1]-points[1, i]])
-#
-#                 # find perpendicular distance from point to current surface (vector projection)
-#                 d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
-#
-#                 # calculate the sign of perpendicular distance from point to current face (+ is inside, - is outside)
-#                 face_distance[i, j] = np.vdot(d_vec, unit_normals[j])
-#
-#             # check if the point is inside the convex hull by checking the sign of the distance
-#             if np.all(face_distance[i] > 0):
-#                 inside[i] = 1.0
-#
-#         return face_distance, inside
-#
-
-def calculate_boundary(vertices):
-
-    # find the points that actually comprise a convex hull
-    hull = ConvexHull(list(vertices))
-
-    # keep only vertices that actually comprise a convex hull and arrange in CCW order
-    vertices = vertices[hull.vertices]
-
-    # get the real number of vertices
-    nVertices = vertices.shape[0]
-
-    # initialize normals array
-    unit_normals = np.zeros([nVertices, 2])
-
-    # determine if point is inside or outside of each face, and distance from each face
-    for j in range(0, nVertices):
-
-        # calculate the unit normal vector of the current face (taking points CCW)
-        if j < nVertices - 1:  # all but the set of point that close the shape
-            normal = np.array([vertices[j+1, 1]-vertices[j, 1],
-                               -(vertices[j+1, 0]-vertices[j, 0])])
-            unit_normals[j] = normal/np.linalg.norm(normal)
-        else:   # the set of points that close the shape
-            normal = np.array([vertices[0, 1]-vertices[j, 1],
-                               -(vertices[0, 0]-vertices[j, 0])])
-            unit_normals[j] = normal/np.linalg.norm(normal)
-
-    return vertices, unit_normals
-
-
-def calculate_distance(points, vertices, unit_normals, return_bool=False):
-
+class calcFCR(Component):
     """
-    :param points: points that you want to calculate the distance from to the faces of the convex hull
-    :param vertices: vertices of the convex hull CCW in order s.t. vertices[i] -> first point of face for
-           unit_normals[i]
-    :param unit_normals: unit normal vector for each face CCW where vertices[i] is first point of face
-    :param return_bool: set to True to return an array of bools where True means the corresponding point
-           is inside the hull
-    :return face_distace: signed perpendicular distance from each point to each face; + is inside
-    :return [inside]: (optional) an array of zeros and ones where 1.0 means the corresponding point is inside the hull
+    Calculates FCR (fixed charge rate) for given windfarm layout
     """
 
-    # print points.shape, vertices.shape, unit_normals.shape
+    def __init__(self, nTurbines):
 
-    nPoints = points.shape[0]
-    nVertices = vertices.shape[0]
+        super(calcFCR, self).__init__()
 
-    # initialize array to hold distances from each point to each face
-    face_distance = np.zeros([nPoints, nVertices])
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
 
-    if not return_bool:
-        # loop through points and find distance to each face
-        for i in range(0, nPoints):
+        # define output
+        self.add_output('FCR', val=0.0, desc='Fixed Charge Rate')
 
-            # determine if point is inside or outside of each face, and distance from each face
-            for j in range(0, nVertices):
+    def solve_nonlinear(self, params, unknowns, resids):
 
-                # define the vector from the point of interest to the first point of the face
-                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]])
 
-                # find perpendicular distance from point to current surface (vector projection)
-                d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
 
-                # calculate the sign of perpendicular distance from point to current face (+ is inside, - is outside)
-                face_distance[i, j] = np.vdot(d_vec, unit_normals[j])
+        #calculate FCR
+        unknowns['FCR'] = 10000.0
 
-        return face_distance
+class calcLLC(Component):
+    """
+    Calculates LLC (landlease cost) for given windfarm layout
+    Annual operating expenses (AOE) include land or ocean bottom lease cost, levelized O&M cost,
+    and levelized replacement/overhaul cost (LRC). Land lease costs (LLC) are the rental or lease fees
+    charged for the turbine installation. LLC is expressed in units of $/kWh.
+    """
 
-    else:
-        # initialize array to hold boolean indicating whether a point is inside the hull or not
-        inside = np.zeros(nPoints)
+    def __init__(self, nTurbines):
 
-        # loop through points and find distance to each face
-        for i in range(0, nPoints):
+        super(calcLLC, self).__init__()
 
-            # determine if point is inside or outside of each face, and distance from each face
-            for j in range(0, nVertices):
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
 
-                # define the vector from the point of interest to the first point of the face
-                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]])
+        # define output
+        self.add_output('LLC', val=0.0, units='$/kWh', desc='Landlease Cost')
 
-                # find perpendicular distance from point to current surface (vector projection)
-                d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
+    def solve_nonlinear(self, params, unknowns, resids):
 
-                # calculate the sign of perpendicular distance from point to current face (+ is inside, - is outside)
-                face_distance[i, j] = np.vdot(d_vec, unit_normals[j])
 
-            # check if the point is inside the convex hull by checking the sign of the distance
-            if np.all(face_distance[i] >= 0):
-                inside[i] = 1.0
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
 
-        return face_distance, inside
+        #calculate LLC
+        unknowns['LLC'] = 10000.0
+
+class calcOandM(Component):
+    """
+    Calculates O&M (levelized operation & maintenance cost) for given windfarm layout
+    A component of AOE that is larger than the LLC is O&M cost. O&M is expressed in units of $/kWh.
+    The O&M cost normally includes
+        - labor, parts, and supplies for scheduled turbine maintenance
+        - labor, parts, and supplies for unscheduled turbine maintenance
+        - parts and supplies for equipment and facilities maintenance
+        - labor for administration and support.
+    """
+
+    def __init__(self, nTurbines):
+
+        super(calcOandM, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        # define output
+        self.add_output('OandM', val=0.0, units='$', desc='levelized O&M cost')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        #calculate LLC
+
+        #need to know area of boundary?
+
+        unknowns['OandM'] = 10000.0
+
+class calcLRC(Component):
+    """
+    Calculates LRC (levelized replacement/overhaul cost) for given windfarm layout
+    LRC distributes the cost of major replacements and overhauls over the life of the wind turbine and is expressed in $/kW machine rating.
+    """
+
+    def __init__(self, nTurbines):
+
+        super(calcLRC, self).__init__()
+
+        # Add inputs
+        self.add_param('turbineX', val=np.zeros(nTurbines),
+                       desc='x coordinates of turbines in wind dir. ref. frame')
+        self.add_param('turbineY', val=np.zeros(nTurbines),
+                       desc='y coordinates of turbines in wind dir. ref. frame')
+
+        self.add_param('hubHeight', val=np.zeros(nTurbines), units='m')
+
+        self.add_param('rotorDiameter', val=np.zeros(nTurbines), units='m')
+
+
+        # define output
+        self.add_output('LRC', val=0.0, units='$', desc='Levelized Replacement Cost')
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        nTurbines = turbineX.size
+
+        #calculate LLC
+        unknowns['LRC'] = 10000.0
+'''
+
 
 
 if __name__ == "__main__":

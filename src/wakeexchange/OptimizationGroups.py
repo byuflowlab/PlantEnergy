@@ -17,35 +17,6 @@ from wakeexchange.floris import floris_wrapper, add_floris_params_IndepVarComps
 
 import warnings
 
-
-class OptPowerOneDir(Group):
-    """ Group connecting the floris model for optimization with one wind direction"""
-
-    def __init__(self, nTurbines, resolution=0, minSpacing=2., differentiable=True, use_rotor_components=True):
-
-        super(OptPowerOneDir, self).__init__()
-
-        # add major components
-        self.add('dirComp', AEPGroup(nTurbines, differentiable=differentiable,
-                                           use_rotor_components=use_rotor_components), promotes=['*'])
-        self.add('spacing_comp', SpacingComp(nTurbines=nTurbines), promotes=['*'])
-
-        # add constraint definitions
-        self.add('spacing_con', ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
-                                         minSpacing=minSpacing, rotorDiameter=np.zeros(nTurbines),
-                                         sc=np.zeros(((nTurbines-1.)*nTurbines/2.)),
-                                         wtSeparationSquared=np.zeros(((nTurbines-1.)*nTurbines/2.))),
-                 promotes=['*'])
-
-        # add objective component
-        self.add('obj_comp', ExecComp('obj = -1.*dir_power0', dir_power0=0.0), promotes=['*'])
-
-        # initialize design variables for optimization
-        # self.add('p1', IndepVarComp('turbineX', np.zeros(nTurbines)), promotes=['*'])
-        # self.add('p2', IndepVarComp('turbineY', np.zeros(nTurbines)), promotes=['*'])
-        # self.add('p3', IndepVarComp('yaw', np.zeros(nTurbines)), promotes=['*'])
-
-
 class OptAEP(Group):
     """
         Group adding optimization parameters to an AEPGroup
@@ -167,6 +138,36 @@ class OptAEP(Group):
 
         # add objective component
         self.add('obj_comp', ExecComp('obj = -1.*AEP', AEP=0.0), promotes=['*'])
+
+# Currently unused code
+'''
+class OptPowerOneDir(Group):
+    """ Group connecting the floris model for optimization with one wind direction"""
+
+    def __init__(self, nTurbines, resolution=0, minSpacing=2., differentiable=True, use_rotor_components=True):
+
+        super(OptPowerOneDir, self).__init__()
+
+        # add major components
+        self.add('dirComp', AEPGroup(nTurbines, differentiable=differentiable,
+                                           use_rotor_components=use_rotor_components), promotes=['*'])
+        self.add('spacing_comp', SpacingComp(nTurbines=nTurbines), promotes=['*'])
+
+        # add constraint definitions
+        self.add('spacing_con', ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
+                                         minSpacing=minSpacing, rotorDiameter=np.zeros(nTurbines),
+                                         sc=np.zeros(((nTurbines-1.)*nTurbines/2.)),
+                                         wtSeparationSquared=np.zeros(((nTurbines-1.)*nTurbines/2.))),
+                 promotes=['*'])
+
+        # add objective component
+        self.add('obj_comp', ExecComp('obj = -1.*dir_power0', dir_power0=0.0), promotes=['*'])
+
+        # initialize design variables for optimization
+        # self.add('p1', IndepVarComp('turbineX', np.zeros(nTurbines)), promotes=['*'])
+        # self.add('p2', IndepVarComp('turbineY', np.zeros(nTurbines)), promotes=['*'])
+        # self.add('p3', IndepVarComp('yaw', np.zeros(nTurbines)), promotes=['*'])
+
 
 
 class OptCOE(Group):
@@ -292,3 +293,4 @@ class OptCOE(Group):
         # add objective component
         self.add('obj_comp', ExecComp('obj = (FCR+ICC)/AEP+LLC+(OandM+LRC)/AEP', ICC=0.0, AEP=0.0, FCR=0.0, LLC=0.0, OandM=0.0, LRC=0.0), promotes=['*'])
 
+'''
