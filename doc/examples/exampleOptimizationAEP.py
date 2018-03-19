@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from openmdao.api import Problem, pyOptSparseDriver
+from openmdao.api import Problem, pyOptSparseDriver, ScipyOptimizer
 from wakeexchange.OptimizationGroups import OptAEP
 from wakeexchange import config
 
@@ -76,6 +76,8 @@ if __name__ == "__main__":
         Cp[turbI] = 0.7737/0.944 * 4.0 * 1.0/3.0 * np.power((1 - 1.0/3.0), 2)
         generatorEfficiency[turbI] = 0.944
         yaw[turbI] = 0.     # deg.
+    
+    print(Cp, Ct)
 
     # Define flow properties
     wind_speed = 8.0        # m/s
@@ -88,22 +90,32 @@ if __name__ == "__main__":
     prob = Problem(impl=impl, root=OptAEP(nTurbines=nTurbs, nDirections=windDirections.size,
                                           minSpacing=minSpacing, differentiable=True, use_rotor_components=False))
 
-    # set up optimizer
-    prob.driver = pyOptSparseDriver()
-    prob.driver.options['optimizer'] = 'SNOPT'
+    # set up optimizer (pyoptsparse)
+    #prob.driver = pyOptSparseDriver()
+    #prob.driver.options['optimizer'] = 'COBYLA' #NSGA2, CONMIN, SNOPT, SLSQP, COBYLA
+    #NSGA2 options
+    #prob.driver.opt_settings['maxGen'] = 10
+    #SNOPT options
+    #prob.driver.opt_settings['Verify level'] = 3 
+    #prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
+    #prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
+    #prob.driver.opt_settings['Major iterations limit'] = 10
+
+    # set optimizer options (scipy)
+    prob.driver = ScipyOptimizer()
+    prob.driver.options['optimizer'] = 'COBYLA' #'COBYLA'
+    prob.driver.options['tol'] = 1.0e-6
+    prob.driver.options['maxiter'] = 2000 #maximum number of solver iterations
+    prob.driver.options['disp'] = True
+
+    # set up objective
     prob.driver.add_objective('obj', scaler=1E-5)
 
-    # set optimizer options
-    prob.driver.opt_settings['Verify level'] = 3
-    prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
-    prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
-    prob.driver.opt_settings['Major iterations limit'] = 1000
-
     # select design variables
-    #prob.driver.add_desvar('turbineX', lower=np.ones(nTurbs)*min(turbineX), upper=np.ones(nTurbs)*max(turbineX), scaler=1)
-    #prob.driver.add_desvar('turbineY', lower=np.ones(nTurbs)*min(turbineY), upper=np.ones(nTurbs)*max(turbineY), scaler=1)
-    for direction_id in range(0, windDirections.size):
-        prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
+    prob.driver.add_desvar('turbineX', lower=np.ones(nTurbs)*min(turbineX), upper=np.ones(nTurbs)*max(turbineX), scaler=1)
+    prob.driver.add_desvar('turbineY', lower=np.ones(nTurbs)*min(turbineY), upper=np.ones(nTurbs)*max(turbineY), scaler=1)
+    #for direction_id in range(0, windDirections.size):
+    #    prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
 
     # add constraints
     #prob.driver.add_constraint('sc', lower=np.zeros(((nTurbs-1.)*nTurbs/2.)), scaler=1.0)
@@ -122,10 +134,12 @@ if __name__ == "__main__":
     for direction_id in range(0, windDirections.size):
         prob['yaw%i' % direction_id] = yaw
 
+
     # assign values to constant inputs (not design variables)
     prob['rotorDiameter'] = rotorDiameter
     prob['axialInduction'] = axialInduction
     prob['generatorEfficiency'] = generatorEfficiency
+    #prob['ratedPower'] = ratedPower
     prob['windSpeeds'] = windSpeeds
     prob['air_density'] = air_density
     prob['windDirections'] = windDirections
