@@ -86,13 +86,19 @@ if __name__ == "__main__":
     windSpeeds = np.ones(size)*wind_speed
     windFrequencies = np.ones(size)/size
 
+
     # initialize problem
     prob = Problem(impl=impl, root=OptAEP(nTurbines=nTurbs, nDirections=windDirections.size,
                                           minSpacing=minSpacing, differentiable=True, use_rotor_components=False))
 
+    # Tell the whole model to finite difference
+    prob.root.deriv_options['type'] = 'fd'
+
     # set up optimizer (pyoptsparse)
-    #prob.driver = pyOptSparseDriver()
-    #prob.driver.options['optimizer'] = 'COBYLA' #NSGA2, CONMIN, SNOPT, SLSQP, COBYLA
+    prob.driver = pyOptSparseDriver()
+    prob.driver.options['optimizer'] = 'SLSQP' #NSGA2, CONMIN, SNOPT, SLSQP, COBYLA
+    #SLSQP options
+    prob.driver.opt_settings['MAXIT'] = 20
     #NSGA2 options
     #prob.driver.opt_settings['maxGen'] = 10
     #SNOPT options
@@ -102,11 +108,11 @@ if __name__ == "__main__":
     #prob.driver.opt_settings['Major iterations limit'] = 10
 
     # set optimizer options (scipy)
-    prob.driver = ScipyOptimizer()
-    prob.driver.options['optimizer'] = 'COBYLA' #'COBYLA'
-    prob.driver.options['tol'] = 1.0e-6
-    prob.driver.options['maxiter'] = 2000 #maximum number of solver iterations
-    prob.driver.options['disp'] = True
+    #prob.driver = ScipyOptimizer()
+    #prob.driver.options['optimizer'] = 'SLSQP' #'COBYLA' 'BFGS' 'SLSQP'
+    #prob.driver.options['tol'] = 1.0e-6
+    #prob.driver.options['maxiter'] = 2000 #maximum number of solver iterations
+    #prob.driver.options['disp'] = True
 
     # set up objective
     prob.driver.add_objective('obj', scaler=1E-5)
