@@ -341,7 +341,7 @@ class WindFarmAEP(Component):
             rank = comm.rank
             config.sens_func_calls_array[rank] += 1
             # print(np.sum(config.sens_func_calls_array))
-
+        print "in linearize AEP"
         return J
 
 class calcICC(Component):
