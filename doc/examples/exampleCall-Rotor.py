@@ -2,7 +2,7 @@
 # Currently not functional
 
 from openmdao.api import Problem, Group
-from wakeexchange.GeneralWindFarmGroups import AEPGroup
+from plantenergy.GeneralWindFarmGroups import AEPGroup
 
 import time
 import numpy as np

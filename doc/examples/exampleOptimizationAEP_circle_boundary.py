@@ -1,9 +1,9 @@
 from __future__ import print_function
 
 from openmdao.api import Problem, pyOptSparseDriver
-from wakeexchange.OptimizationGroups import OptAEP
-from wakeexchange import config
-from wakeexchange.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+from plantenergy.OptimizationGroups import OptAEP
+from plantenergy import config
+from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
 
 import time
 import numpy as np

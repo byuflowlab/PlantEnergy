@@ -4,7 +4,7 @@ import numpy as np
 #import cPickle as pickle
 import os
 
-from wakeexchange.OptimizationGroups import AEPGroup
+from plantenergy.OptimizationGroups import AEPGroup
 
 from fusedwake.WindTurbine import WindTurbine
 from fusedwake.WindFarm import WindFarm

@@ -1,7 +1,7 @@
 from openmdao.api import Component, Group, Problem, IndepVarComp
 from akima import Akima, akima_interp
-from wakeexchange.utilities import hermite_spline
-import wakeexchange.config
+from plantenergy.utilities import hermite_spline
+import plantenergy.config
 
 import numpy as np
 from scipy import interp

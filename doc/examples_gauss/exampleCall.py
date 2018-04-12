@@ -1,6 +1,6 @@
 from openmdao.api import Problem
-from wakeexchange.GeneralWindFarmGroups import AEPGroup
-from wakeexchange.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+from plantenergy.GeneralWindFarmGroups import AEPGroup
+from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
 
 import time
 import numpy as np
