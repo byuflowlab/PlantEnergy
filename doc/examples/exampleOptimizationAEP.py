@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # select design variables
     prob.driver.add_desvar('turbineX', lower=np.ones(nTurbs)*min(turbineX), upper=np.ones(nTurbs)*max(turbineX), scaler=1)
     prob.driver.add_desvar('turbineY', lower=np.ones(nTurbs)*min(turbineY), upper=np.ones(nTurbs)*max(turbineY), scaler=1)
-    #for direction_id in range(0, windDirections.size):
+    # for direction_id in range(0, windDirections.size):
     #    prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
 
     # add constraints
