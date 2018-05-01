@@ -26,9 +26,10 @@ if __name__ == "__main__":
 
     filename = "input_files/NREL5MWCPCT_dict.p"
     # filename = "../input_files/NREL5MWCPCT_smooth_dict.p"
+    from numpy.core import multiarray
     import cPickle as pickle
 
-    data = pickle.load(open(filename, "rb"))
+    data = pickle.load(open(filename, "r"))
     ct_curve = np.zeros([data['wind_speed'].size, 2])
     ct_curve[:, 0] = data['wind_speed']
     ct_curve[:, 1] = data['CT']
