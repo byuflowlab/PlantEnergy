@@ -1,7 +1,7 @@
 # No longer functional - OptPowerOneDir is no longer used
 
 from openmdao.api import Problem, ScipyOptimizer, pyOptSparseDriver
-from wakeexchange.OptimizationGroups import OptPowerOneDir
+from plantenergy.OptimizationGroups import OptPowerOneDir
 
 import time
 import numpy as np

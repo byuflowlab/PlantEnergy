@@ -2,10 +2,10 @@ from __future__ import print_function
 import unittest
 from openmdao.api import pyOptSparseDriver, Problem
 
-from wakeexchange.OptimizationGroups import *
-from wakeexchange.GeneralWindFarmComponents import calculate_boundary
-from wakeexchange.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
-from wakeexchange.floris import floris_wrapper, add_floris_params_IndepVarComps
+from plantenergy.OptimizationGroups import *
+from plantenergy.GeneralWindFarmComponents import calculate_boundary
+from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+from plantenergy.floris import floris_wrapper, add_floris_params_IndepVarComps
 # from wakeexchange.larsen import larsen_wrapper, add_larsen_params_IndepVarComps
 # from wakeexchange.jensen import jensen_wrapper, add_jensen_params_IndepVarComps
 
