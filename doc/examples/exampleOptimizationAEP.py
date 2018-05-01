@@ -90,7 +90,8 @@ if __name__ == "__main__":
 
     # initialize problem
     prob = Problem(impl=impl, root=OptAEP(nTurbines=nTurbs, nDirections=windDirections.size,
-                                          minSpacing=minSpacing, differentiable=True, use_rotor_components=False))
+                                          minSpacing=minSpacing, differentiable=True, use_rotor_components=False)) 
+
 
     # Tell the whole model to finite difference
     prob.root.deriv_options['type'] = 'fd'
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     prob.driver = pyOptSparseDriver()
     prob.driver.options['optimizer'] = 'SLSQP' #NSGA2, CONMIN, SNOPT, SLSQP, COBYLA
     #SLSQP options
-    prob.driver.opt_settings['MAXIT'] = 4
+    prob.driver.opt_settings['MAXIT'] = 200
     #NSGA2 options
     #prob.driver.opt_settings['maxGen'] = 5
     #SNOPT options
@@ -156,6 +157,12 @@ if __name__ == "__main__":
     prob['Ct_in'] = Ct
     prob['Cp_in'] = Cp
 
+    # set wind shear conditions
+    prob['model_params:cos_spread'] = 1E12         # turns off cosine spread (just needs to be very large)
+    prob['model_params:shearExp'] = 0.02         # turns off cosine spread (just needs to be very large)
+    prob['model_params:z_ref'] = 80.         # turns off cosine spread (just needs to be very large)
+    prob['model_params:z0'] = 0.
+
     # set options
     # prob['floris_params:FLORISoriginal'] = True
     # prob['floris_params:CPcorrected'] = False
@@ -180,6 +187,7 @@ if __name__ == "__main__":
 
     mpi_print(prob,  'turbine X positions in wind frame (m): %s' % prob['turbineX'])
     mpi_print(prob,  'turbine Y positions in wind frame (m): %s' % prob['turbineY'])
+    mpi_print(prob,  'turbine Z positions in wind frame (m): %s' % prob['hubHeight'])
     mpi_print(prob,  'wind farm power in each direction (kW): %s' % prob['dirPowers'])
     mpi_print(prob,  'AEP (kWh): %s' % prob['AEP'])
 
@@ -195,6 +203,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.xlabel('Turbine X Position ($X/D_r$)')
     plt.ylabel('Turbine Y Position ($Y/D_r$)')
-    plt.xlim([3, 12])
-    plt.ylim([3, 12])
+    plt.xlim([3, 30])
+    plt.ylim([3, 30])
     plt.show()
