@@ -57,6 +57,7 @@ if __name__ == "__main__":
     xpoints, ypoints = np.meshgrid(points, points)
     turbineX = np.ndarray.flatten(xpoints)
     turbineY = np.ndarray.flatten(ypoints)
+    turbineZ = np.ones(turbineX.size)*90.0
 
     # initialize input variable arrays
     nTurbs = turbineX.size
@@ -98,9 +99,9 @@ if __name__ == "__main__":
     prob.driver = pyOptSparseDriver()
     prob.driver.options['optimizer'] = 'SLSQP' #NSGA2, CONMIN, SNOPT, SLSQP, COBYLA
     #SLSQP options
-    prob.driver.opt_settings['MAXIT'] = 20
+    prob.driver.opt_settings['MAXIT'] = 4
     #NSGA2 options
-    #prob.driver.opt_settings['maxGen'] = 10
+    #prob.driver.opt_settings['maxGen'] = 5
     #SNOPT options
     #prob.driver.opt_settings['Verify level'] = 3 
     #prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     # select design variables
     prob.driver.add_desvar('turbineX', lower=np.ones(nTurbs)*min(turbineX), upper=np.ones(nTurbs)*max(turbineX), scaler=1)
     prob.driver.add_desvar('turbineY', lower=np.ones(nTurbs)*min(turbineY), upper=np.ones(nTurbs)*max(turbineY), scaler=1)
+    prob.driver.add_desvar('hubHeight', lower=np.ones(nTurbs)*50.0, upper=np.ones(nTurbs)*120.0)
     #for direction_id in range(0, windDirections.size):
     #    prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1)
 
@@ -137,6 +139,7 @@ if __name__ == "__main__":
     # assign initial values to design variables
     prob['turbineX'] = turbineX
     prob['turbineY'] = turbineY
+    prob['hubHeight'] = turbineZ
     for direction_id in range(0, windDirections.size):
         prob['yaw%i' % direction_id] = yaw
 

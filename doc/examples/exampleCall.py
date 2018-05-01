@@ -10,6 +10,7 @@ if __name__ == "__main__":
     # define turbine locations in global reference frame
     turbineX = np.array([1164.7, 947.2,  1682.4, 1464.9, 1982.6, 2200.1])
     turbineY = np.array([1024.7, 1335.3, 1387.2, 1697.8, 2060.3, 1749.7])
+    turbineZ = np.array([90.0, 100.0, 90.0, 80.0, 70.0, 90.0])
 
     # initialize input variable arrays
     nTurbs = turbineX.size
@@ -47,6 +48,7 @@ if __name__ == "__main__":
     # assign values to turbine states
     prob['turbineX'] = turbineX
     prob['turbineY'] = turbineY
+    prob['hubHeight'] = turbineZ
     prob['yaw0'] = yaw
 
     # assign values to constant inputs (not design variables)
