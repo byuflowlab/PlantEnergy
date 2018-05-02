@@ -12,6 +12,7 @@ import numpy as np
 from openmdao.api import Group, IndepVarComp, ExecComp
 
 from plantenergy.GeneralWindFarmGroups import DirectionGroup, AEPGroup
+from plantenergy.GeneralCOEGroups import COEGroup
 from plantenergy.GeneralWindFarmComponents import SpacingComp, BoundaryComp # cost model functions are defunct: calcICC, calcFCR, calcLLC, calcLRC, calcOandM
 from plantenergy.floris import floris_wrapper, add_floris_params_IndepVarComps
 
@@ -138,6 +139,73 @@ class OptAEP(Group):
 
         # add objective component
         self.add('obj_comp', ExecComp('obj = -1.*AEP', AEP=0.0), promotes=['*'])
+
+class OptCOE(Group):
+
+    def __init__(self, nTurbines, nDirections=1, minSpacing=2., use_rotor_components=True,
+                 datasize=0, differentiable=True, force_fd=False, nVertices=0, wake_model=floris_wrapper,
+                 wake_model_options=None, params_IdepVar_func=add_floris_params_IndepVarComps,
+                 params_IndepVar_args={'use_rotor_components': False}, cp_points=1, cp_curve_spline=None,
+                 rec_func_calls=False):
+
+        # print("initializing OptCOE Group")
+        super(OptCOE, self).__init__()
+
+        if wake_model_options is None:
+            wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
+                             'nSamples': 0, 'verbose': False}
+
+        try:
+            nSamples = wake_model_options['nSamples']
+        except:
+            nSamples = 0
+
+        if force_fd:
+            self.deriv_options['type'] = 'fd'
+            self.deriv_options['form'] = 'forward'
+
+        # ##### add major components and groups
+        # add group that calculates AEP
+        self.add('COEgroup', COEGroup(nTurbines=nTurbines, nDirections=nDirections,
+                                            use_rotor_components=use_rotor_components,
+                                            datasize=datasize, differentiable=differentiable, wake_model=wake_model,
+                                            wake_model_options=wake_model_options,
+                                            params_IdepVar_func=params_IdepVar_func,
+                                            params_IndepVar_args=params_IndepVar_args, nSamples=nSamples,
+                                            cp_points=cp_points, cp_curve_spline=cp_curve_spline,
+                                      rec_func_calls=rec_func_calls),
+                 promotes=['*'])
+
+
+        # add component that calculates spacing between each pair of turbines
+        self.add('spacing_comp', SpacingComp(nTurbines=nTurbines), promotes=['*'])
+
+        if nVertices > 0:
+            # add component that enforces a convex hull wind farm boundary
+            self.add('boundary_con', BoundaryComp(nVertices=nVertices, nTurbines=nTurbines), promotes=['*'])
+            self.add('bv0', IndepVarComp('boundary_radius', val=1000., units='m',
+                                         pass_by_obj=True, desc='radius of wind farm boundary'), promotes=['*'])
+            self.add('bv1', IndepVarComp('boundary_center', val=np.array([0., 0.]), units='m', pass_by_obj=True,
+                                         desc='x and y positions of circular wind farm boundary center'), promotes=['*'])
+        else:
+            warnings.warn("nVertices has been set to zero. No boundary constraints can be used unless nVertices > 0",
+                                RuntimeWarning)
+        # ##### add constraint definitions
+
+        # self.add('s0', IndepVarComp('minSpacing', np.array([minSpacing]), units='m',
+        #          pass_by_obj=True, desc='minimum allowable spacing between wind turbines'), promotes=['*'])
+
+        self.add('spacing_con', ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
+                                         minSpacing=np.array([minSpacing]), rotorDiameter=np.zeros(nTurbines),
+                                         sc=np.zeros(int(((nTurbines-1.)*nTurbines/2.))),
+                                         wtSeparationSquared=np.zeros(int(((nTurbines-1.)*nTurbines/2.)))),
+                 promotes=['*'])
+
+
+        # add objective component
+        #self.add('obj_comp', ExecComp('obj = -1.*AEP', AEP=0.0), promotes=['*'])
+        self.add('obj_comp', ExecComp('obj = -1000000./coe', coe=0.0), promotes=['*'])
+
 
 # Currently unused code
 '''
