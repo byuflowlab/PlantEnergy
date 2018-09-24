@@ -1,6 +1,10 @@
-from openmdao.api import Problem
-from plantenergy.GeneralWindFarmGroups import AEPGroup
-from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+
+# This file is intended to look at the yaw sensitivity to extreme yaw angles.  We will be modifying FLORIS to handle extreme yaw 
+# specifically for optimization under uncertainty studies.
+
+
+from openmdao.api import Problem, Group
+from florisse.floris import AEPGroup
 
 import time
 import numpy as np
@@ -9,11 +13,17 @@ import numpy as np
 if __name__ == "__main__":
 
     # define turbine locations in global reference frame
-    turbineX = np.array([1164.7, 947.2,  1682.4, 1464.9, 1982.6, 2200.1])
-    turbineY = np.array([1024.7, 1335.3, 1387.2, 1697.8, 2060.3, 1749.7])
+    #turbineX = np.array([1164.7, 947.2,  1682.4, 1464.9, 1982.6, 2200.1])
+    #turbineY = np.array([1024.7, 1335.3, 1387.2, 1697.8, 2060.3, 1749.7])
+
+    turbineX = np.array([0., 0.])
+    turbineY = np.array([0., 0.])
 
     # initialize input variable arrays
     nTurbs = turbineX.size
+    
+    print('Number of Turbines = ', nTurbs)
+
     rotorDiameter = np.zeros(nTurbs)
     axialInduction = np.zeros(nTurbs)
     Ct = np.zeros(nTurbs)
@@ -36,14 +46,11 @@ if __name__ == "__main__":
     air_density = 1.1716    # kg/m^3
     # wind_direction = 240    # deg (N = 0 deg., using direction FROM, as in met-mast data)
     wind_direction = 270.-0.523599*180./np.pi    # deg (N = 0 deg., using direction FROM, as in met-mast data)
-    print(wind_direction)
+    print wind_direction
     wind_frequency = 1.    # probability of wind in this direction at this speed
 
     # set up problem
-    prob = Problem(root=AEPGroup(nTurbs, nDirections=1, use_rotor_components=False, datasize=0,
-                 differentiable=False, optimizingLayout=False, nSamples=0, wake_model=gauss_wrapper,
-                 wake_model_options=None, params_IdepVar_func=add_gauss_params_IndepVarComps,
-                 params_IndepVar_args=None))
+    prob = Problem(root=AEPGroup(nTurbs, differentiable=True, use_rotor_components=False))
 
     # initialize problem
     prob.setup()
@@ -63,28 +70,29 @@ if __name__ == "__main__":
     prob['windFrequencies'] = np.array([wind_frequency])
     prob['Ct_in'] = Ct
     prob['Cp_in'] = Cp
-    prob['model_params:spread_mode'] = 'bastankhah'
-    prob['model_params:yaw_mode'] = 'bastankhah'
-    prob['model_params:ky'] = 0.7
-    prob['model_params:kz'] = 0.7
-    prob['model_params:alpha'] = 2.32
-    prob['model_params:beta'] = 0.154
-    prob['model_params:I'] = 0.1
-
+    prob['floris_params:cos_spread'] = 1E12         # turns off cosine spread (just needs to be very large)
+    # prob['floris_params:useWakeAngle'] = True
     # run the problem
-    print('start Bastankhah run')
+    print 'start FLORIS run'
     tic = time.time()
     prob.run()
     toc = time.time()
 
-    print(prob['turbineX'])
+    print prob['turbineX']
+
+    yawAngles = np.linspace(0,100,101)
+    for i in range(len(yawAngles)):
+        prob['yaw0'] = np.ones(turbineX.size) * yawAngles[i]
+        prob.run()
+        print('Turbine Yaw = ', prob['yaw0'],'Turbine Power = ', prob['wtPower0'])
+
 
     # print the results
-    print('Bastankhah calculation took %.06f sec.'.format(toc-tic))
-    print('turbine X positions in wind frame (m): %s'.format(prob['turbineX']))
-    print('turbine Y positions in wind frame (m): %s'.format(prob['turbineY']))
-    print('yaw (deg) = '.format(prob['yaw0']))
-    print('Effective hub velocities (m/s) = '.format(prob['wtVelocity0']))
-    print('Turbine powers (kW) = '.format((prob['wtPower0'])))
-    print('wind farm power (kW): %s'.format((prob['dir_power0'])))
-    print('wind farm AEP for this direction and speed (kWh): %s'.format(prob['AEP']))
+    print 'FLORIS calculation took %.06f sec.' % (toc-tic)
+    print 'turbine X positions in wind frame (m): %s' % prob['turbineX']
+    print 'turbine Y positions in wind frame (m): %s' % prob['turbineY']
+    print 'yaw (deg) = ', prob['yaw0']
+    print 'Effective hub velocities (m/s) = ', prob['wtVelocity0']
+    print 'Turbine powers (kW) = ', (prob['wtPower0'])
+    print 'wind farm power (kW): %s' % (prob['dir_power0'])
+    print 'wind farm AEP for this direction and speed (kWh): %s' % prob['AEP']

@@ -2,10 +2,10 @@ from __future__ import print_function
 import unittest
 from openmdao.api import pyOptSparseDriver, Problem
 
-from wakeexchange.OptimizationGroups import *
-from wakeexchange.GeneralWindFarmComponents import calculate_boundary
-from wakeexchange.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
-from wakeexchange.floris import floris_wrapper, add_floris_params_IndepVarComps
+from plantenergy.OptimizationGroups import *
+from plantenergy.GeneralWindFarmComponents import calculate_boundary
+from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+from plantenergy.floris import floris_wrapper, add_floris_params_IndepVarComps
 # from wakeexchange.larsen import larsen_wrapper, add_larsen_params_IndepVarComps
 # from wakeexchange.jensen import jensen_wrapper, add_jensen_params_IndepVarComps
 
@@ -110,7 +110,7 @@ from scipy.interpolate import UnivariateSpline
 #         self.J = prob.check_total_derivatives(out_stream=None)
 #         self.nDirections = nDirections
 #
-#         # print self.J
+#         # print(self.J)
 #
 #     def testObj(self):
 #
@@ -210,7 +210,7 @@ class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
         self.J = prob.check_total_derivatives(out_stream=None)
         self.nDirections = nDirections
 
-        # print self.J
+        # print(self.J)
 
     def testObj(self):
 
@@ -249,7 +249,7 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
             locations[i] = np.array([turbineX[i], turbineY[i]])
 
 
-        # print locations
+        # print(locations)
         boundaryVertices, boundaryNormals = calculate_boundary(locations)
         nVertices = len(boundaryNormals)
 
@@ -421,7 +421,7 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         self.J = prob.check_total_derivatives(out_stream=None)
         self.nDirections = nDirections
 
-        # print self.J
+        # print(self.J)
 
     def testObj_x(self):
         np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'], self.J[('obj', 'turbineX')]['J_fd'], self.rtol, self.atol)
@@ -698,7 +698,7 @@ class GradientTestsGauss(unittest.TestCase):
         self.Jt = prob.check_total_derivatives(out_stream=None)
 
         # print("J = ", self.J)
-        # print self.J
+        # print(self.J)
 
     def testGaussGrads_wtVelocity0_turbineXw(self):
         np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fd'], self.rtol_p, self.atol_p)
@@ -1071,7 +1071,7 @@ class GradientTestsConstraintComponents(unittest.TestCase):
         self.J_circle = prob_circle.check_total_derivatives(out_stream=None)
         self.nDirections = nDirections
 
-        # print self.J
+        # print(self.J)
 
 
     def testSpacingCon(self):
@@ -1114,4 +1114,4 @@ if __name__ == "__main__":
 # indep_list = ['turbineX', 'turbineY', 'yaw', 'rotorDiameter']
 # unknown_list = ['dir_power0']
 # self.J = prob.calc_gradient(indep_list, unknown_list, return_format='array')
-# print self.J
+# print(self.J)

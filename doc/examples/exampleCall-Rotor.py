@@ -1,10 +1,12 @@
+# Software example when an explicit connection to a rotor solver is made
+# Currently not functional
+
 from openmdao.api import Problem, Group
-from wakeexchange.GeneralWindFarmGroups import AEPGroup
+from plantenergy.GeneralWindFarmGroups import AEPGroup
 
 import time
 import numpy as np
 import cPickle as pickle
-
 
 if __name__ == "__main__":
 

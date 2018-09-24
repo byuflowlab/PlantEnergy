@@ -1,5 +1,7 @@
+# No longer functional - OptPowerOneDir is no longer used
+
 from openmdao.api import Problem, ScipyOptimizer, pyOptSparseDriver
-from wakeexchange.OptimizationGroups import OptPowerOneDir
+from plantenergy.OptimizationGroups import OptPowerOneDir
 
 import time
 import numpy as np
@@ -83,19 +85,20 @@ if __name__ == "__main__":
     prob['gen_params:CTcorrected'] = False
 
     # run the problem
-    print 'start FLORIS run'
+    print('start FLORIS run')
     tic = time.time()
     prob.run()
     toc = time.time()
 
     # print the results
-    print('FLORIS Opt. calculation took %.03f sec.' % (toc-tic))
-    print 'turbine powers (kW): %s' % prob['wtPower0']
-    print 'turbine X positions in wind frame (m): %s' % prob['turbineX']
-    print 'turbine Y positions in wind frame (m): %s' % prob['turbineY']
-    print 'yaw (deg) = ', prob['yaw0']
-    print 'effective wind speeds (m/s): %s' % prob['wtVelocity0']
-    print 'wind farm power (kW): %s' % prob['dir_power0']
+    print('FLORIS Opt. calculation took {0} sec.'.format(toc-tic))
+    print('turbine X positions in wind frame (m): {0}'.format(prob['turbineX']))
+    print('turbine Y positions in wind frame (m): {0}'.format(prob['turbineY']))
+    print('yaw (deg) = ', prob['yaw0'])
+    print('Effective hub velocities (m/s) = ', prob['wtVelocity0'])
+    print('Turbine powers (kW) = ', prob['wtPower0'])
+    print('wind farm power (kW) = ', prob['dir_power0'])
+    print('wind farm AEP for this direction and speed (kWh) = ', prob['AEP'])
 
     # data = prob.check_partial_derivatives()
 

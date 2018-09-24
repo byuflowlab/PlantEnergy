@@ -1,8 +1,8 @@
 from __future__ import print_function
 
 from openmdao.api import Problem, pyOptSparseDriver
-from wakeexchange.OptimizationGroups import OptAEP
-from wakeexchange.GeneralWindFarmComponents import calculate_boundary
+from plantenergy.OptimizationGroups import OptAEP
+from plantenergy.GeneralWindFarmComponents import calculate_boundary
 
 import time
 import numpy as np
@@ -81,17 +81,32 @@ if __name__ == "__main__":
                                           minSpacing=minSpacing, differentiable=True,
                                           use_rotor_components=False, nVertices=nVertices))
 
-    # set up optimizer
-    prob.driver = pyOptSparseDriver()
-    prob.driver.options['optimizer'] = 'SNOPT'
-    prob.driver.add_objective('obj', scaler=1E-5)
+    # Tell the whole model to finite difference
+    prob.root.deriv_options['type'] = 'fd'
 
-    # set optimizer options
+    # set optimizer options (pyoptsparse)
+    prob.driver = pyOptSparseDriver()
+    prob.driver.options['optimizer'] = 'SLSQP' #NSGA2, CONMIN, SNOPT, SLSQP, COBYLA
+    #SLSQP options
+    prob.driver.opt_settings['MAXIT'] = 5
+    #NSGA2 options
+    #prob.driver.opt_settings['maxGen'] = 10
+    #SNOPT options
     # prob.driver.opt_settings['Verify level'] = 3
-    prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP_amalia.out'
-    prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP_amalia.out'
-    prob.driver.opt_settings['Major iterations limit'] = 1000
-    prob.driver.opt_settings['Major optimality tolerance'] = 1E-5
+    #prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP_amalia.out'
+    #prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP_amalia.out'
+    #prob.driver.opt_settings['Major iterations limit'] = 1000
+    #prob.driver.opt_settings['Major optimality tolerance'] = 1E-5
+
+    # set optimizer options (scipy)
+    #prob.driver = ScipyOptimizer()
+    #prob.driver.options['optimizer'] = 'SLSQP' #'COBYLA' 'BFGS' 'SLSQP'
+    #prob.driver.options['tol'] = 1.0e-6
+    #prob.driver.options['maxiter'] = 2000 #maximum number of solver iterations
+    #prob.driver.options['disp'] = True
+
+    # set objective function
+    prob.driver.add_objective('obj', scaler=1E-5)
 
     # select design variables
     prob.driver.add_desvar('turbineX', scaler=1.0)
@@ -100,7 +115,7 @@ if __name__ == "__main__":
     #     prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1.0)
 
     # add constraints
-    prob.driver.add_constraint('sc', lower=np.zeros(((nTurbines-1.)*nTurbines/2.)), scaler=1.0)
+    prob.driver.add_constraint('sc', lower=np.zeros(int((nTurbines-1.)*nTurbines/2.)), scaler=1.0)
     prob.driver.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1.0)
 
     tic = time.time()

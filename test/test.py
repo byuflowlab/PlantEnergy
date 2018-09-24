@@ -1,9 +1,10 @@
+# this file is out of date
 import unittest
 import numpy as np
-import cPickle as pickle
+#import cPickle as pickle
 import os
 
-from wakeexchange.OptimizationGroups import AEPGroup
+from plantenergy.OptimizationGroups import AEPGroup
 
 from fusedwake.WindTurbine import WindTurbine
 from fusedwake.WindFarm import WindFarm
@@ -390,7 +391,7 @@ class TestGaussWrapper(unittest.TestCase):
         # run the problem
         prob.run()
 
-        print prob['wtVelocity0'], prob['turbineX'], prob['turbineY']
+        print(prob['wtVelocity0'], prob['turbineX'], prob['turbineY'])
 
         self.prob = prob
 

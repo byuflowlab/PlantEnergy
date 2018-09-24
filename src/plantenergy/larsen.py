@@ -7,7 +7,7 @@ Brigham Young University
 from openmdao.api import IndepVarComp, Component, Group
 import numpy as np
 
-from fusedwake.gcl import GCL #use w/GCL.f
+from fusedwake.gcl.python.gcl import GCLarsen #use w/GCL.f
 
 
 def add_larsen_params_IndepVarComps(openmdao_object, nTurbines, datasize):
@@ -99,16 +99,15 @@ class GC_Larsen(Component):
         self.wf_instance.xyz = np.vstack([a, H])
         self.wf_instance.nWT = nTurbines
 
-        #print self.wf_instance.WT.refCurvesArray
+        #print(self.wf_instance.WT.refCurvesArray)
         #quit()
 
-        gcl = GCL(WF=self.wf_instance, TI=Ia, z0=0.0001, NG=8, sup='lin', inflow='log')
+        gcl = GCLarsen(WF=self.wf_instance, TI=Ia, z0=0.0001, NG=8, sup='lin', inflow='log')
         gcl(WS=WS, WD=WD, version='fort_gcl')
         hubVelocity = gcl(WS=WS, WD=WD).u_wt
         # -------------------------------------------------------- #
 
         unknowns['wtVelocity%i' % self.direction_id] = hubVelocity
-        #print unknowns['wtVelocity%i' %   direction_id]
 
 
 class larsen_wrapper(Group):

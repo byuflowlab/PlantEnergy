@@ -1,9 +1,9 @@
 from __future__ import print_function
 
 from openmdao.api import Problem, pyOptSparseDriver
-from wakeexchange.OptimizationGroups import OptAEP
-from wakeexchange import config
-from wakeexchange.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+from plantenergy.OptimizationGroups import OptAEP
+from plantenergy import config
+from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
 
 import time
 import numpy as np
@@ -141,21 +141,32 @@ if __name__ == "__main__":
                                           wake_model=gauss_wrapper, params_IdepVar_func=add_gauss_params_IndepVarComps,
                                           params_IndepVar_args={}))
 
-    # prob.root.deriv_options['type'] = 'fd'
-    # prob.root.deriv_options['form'] = 'central'
-    # prob.root.deriv_options['step_size'] = 1.0e-8
+    # Tell the whole model to finite difference
+    prob.root.deriv_options['type'] = 'fd'
 
-    # set up optimizer
+    # set optimizer options (pyoptsparse)
     prob.driver = pyOptSparseDriver()
-    prob.driver.options['optimizer'] = 'SNOPT'
-    prob.driver.add_objective('obj', scaler=1E0)
-    # prob.driver.options['gradient method'] = 'snopt_fd'
+    prob.driver.options['optimizer'] = 'SLSQP' #NSGA2, CONMIN, SNOPT, SLSQP, COBYLA
+    #SLSQP options
+    prob.driver.opt_settings['MAXIT'] = 5
+    #NSGA2 options
+    #prob.driver.opt_settings['maxGen'] = 10
+    #SNOPT options
+    # prob.driver.opt_settings['Verify level'] = 3
+    #prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP_amalia.out'
+    #prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP_amalia.out'
+    #prob.driver.opt_settings['Major iterations limit'] = 1000
+    #prob.driver.opt_settings['Major optimality tolerance'] = 1E-5
 
-    # set optimizer options
-    prob.driver.opt_settings['Verify level'] = 3
-    prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
-    prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
-    # prob.driver.opt_settings['Major iterations limit'] = 1000
+    # set optimizer options (scipy)
+    #prob.driver = ScipyOptimizer()
+    #prob.driver.options['optimizer'] = 'SLSQP' #'COBYLA' 'BFGS' 'SLSQP'
+    #prob.driver.options['tol'] = 1.0e-6
+    #prob.driver.options['maxiter'] = 2000 #maximum number of solver iterations
+    #prob.driver.options['disp'] = True
+
+    # set objective function
+    prob.driver.add_objective('obj', scaler=1E-5)
 
     # select design variables
     prob.driver.add_desvar('turbineX', scaler=1E3)

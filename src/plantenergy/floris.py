@@ -12,7 +12,7 @@ import re
 
 def add_floris_params_IndepVarComps(openmdao_object, use_rotor_components=False):
 
-    print use_rotor_components
+    print(use_rotor_components)
     # permanently alter defaults here
 
     # ##################   wake deflection   ##################
@@ -184,6 +184,9 @@ class FLORISParameters(Component):
         # ##################   other   ##################
         self.add_param('model_params:FLORISoriginal', False, pass_by_obj=True,
                                 desc='override all parameters and use FLORIS as original in first Wind Energy paper')
+        self.add_param('model_params:shearExp', 0.15, desc='wind shear exponent')
+        self.add_param('model_params:z_ref', 90., units='m', desc='height at which wind_speed is measured')
+        self.add_param('model_params:z0', 0., units='m', desc='ground height')
 
         # add corresponding unknowns
         self.add_output('floris_params:kd', 0.15 if not use_rotor_components else 0.17, pass_by_obj=True,
@@ -228,7 +231,9 @@ class FLORISParameters(Component):
                                 desc='if axial induction is not provided, then it will be calculated based on CT')
         self.add_output('floris_params:useaUbU', True, pass_by_obj=True,
                                 desc='if True then zone velocity decay rates (MU) will be adjusted based on yaw')
-
+        self.add_output('floris_params:shearExp', 0.15, desc='wind shear exponent')
+        self.add_output('floris_params:z_ref', 90., units='m', desc='height at which wind_speed is measured')
+        self.add_output('floris_params:z0', 0., units='m', desc='ground height')
         # ################   Visualization   ###########################
         # shear layer (only influences visualization)
         self.add_output('floris_params:shearCoefficientAlpha', 0.10805, pass_by_obj=True)
@@ -252,7 +257,7 @@ class floris_wrapper(Group):
         super(floris_wrapper, self).__init__()
 
         if wake_model_options is None:
-            wake_wake_model_options = {'differentiable': True, 'use_rotor_components': False, 'nSamples': 0, 'verbose': False}
+            wake_model_options = {'differentiable': True, 'use_rotor_components': False, 'nSamples': 0, 'verbose': False}
 
         self.direction_id = direction_id
         self.nTurbines = nTurbines
