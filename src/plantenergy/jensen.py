@@ -4,11 +4,8 @@ Created by Jared J. Thomas, Jul. 2016.
 Brigham Young University
 """
 
-from openmdao.api import IndepVarComp, Component, Group
-from jensen3d.JensenOpenMDAOconnect import wakeOverlap, effectiveVelocity, effectiveVelocityCosineOverlap, \
-    effectiveVelocityCosineNoOverlap, effectiveVelocityConference, JensenCosineYaw, JensenCosineYawIntegral
-
-
+from openmdao.api import IndepVarComp, Group
+from jensen3d.JensenOpenMDAOconnect import Jensen
 def add_jensen_params_IndepVarComps(openmdao_object, use_angle=False):
 
     # add variable tree and indep-var stuff for Jensen
@@ -30,27 +27,6 @@ class jensen_wrapper(Group):
         try:
             wake_model_options['variant']
         except:
-            wake_model_options = {'variant': 'Original'}
+            wake_model_options['variant'] = 'Original'
 
-        if wake_model_options['variant'] is 'Original':
-            self.add('jensen_1', wakeOverlap(nTurbs, direction_id=direction_id), promotes=['*'])
-            self.add('jensen_2', effectiveVelocity(nTurbs, direction_id=direction_id), promotes=['*'])
-        elif wake_model_options['variant'] is 'Cosine':
-            self.add('jensen_1', wakeOverlap(nTurbs, direction_id=direction_id), promotes=['*'])
-            self.add('jensen_2', effectiveVelocityCosineOverlap(nTurbs, direction_id=direction_id), promotes=['*'])
-        elif wake_model_options['variant'] is 'CosineNoOverlap_1R' or wake_model_options['variant'] is \
-                'CosineNoOverlap_2R':
-            self.add('jensen_1', effectiveVelocityCosineNoOverlap(nTurbs, direction_id=direction_id,
-                                                             options=wake_model_options),
-                     promotes=['*'])
-        elif wake_model_options['variant'] is 'Conference':
-            self.add('jensen_1', effectiveVelocityConference(nTurbines=nTurbs, direction_id=direction_id), promotes=['*'])
-        elif wake_model_options['variant'] is 'CosineYaw_1R' or wake_model_options['variant'] is 'CosineYaw_2R':
-            self.add('jensen_1', JensenCosineYaw(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
-                     promotes=['*'])
-        elif wake_model_options['variant'] is 'CosineYawIntegral':
-            self.add('f_1', JensenCosineYawIntegral(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
-                     promotes=['*'])
-        elif wake_model_options['variant'] is 'CosineYaw':
-            self.add('f_1', JensenCosineYaw(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
-                     promotes=['*'])
+        self.add('jensen', Jensen(nTurbs, direction_id, model_options=wake_model_options), promotes=['*'])
