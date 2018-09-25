@@ -188,7 +188,7 @@ class test_guass(unittest.TestCase):
 
     def setUp(self):
         try:
-            from wakeexchange.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+            from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
             self.working_import = True
         except:
             self.working_import = False
