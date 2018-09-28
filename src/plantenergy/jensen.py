@@ -6,6 +6,7 @@ Brigham Young University
 
 from openmdao.api import IndepVarComp, Group
 from jensen3d.JensenOpenMDAOconnect import Jensen
+
 def add_jensen_params_IndepVarComps(openmdao_object, use_angle=False):
 
     # add variable tree and indep-var stuff for Jensen
@@ -27,6 +28,6 @@ class jensen_wrapper(Group):
         try:
             wake_model_options['variant']
         except:
-            wake_model_options['variant'] = 'Original'
+            wake_model_options['variant'] = 'TopHat'
 
         self.add('jensen', Jensen(nTurbs, direction_id, model_options=wake_model_options), promotes=['*'])
