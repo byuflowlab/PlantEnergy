@@ -184,9 +184,9 @@ class FLORISParameters(Component):
         # ##################   other   ##################
         self.add_param('model_params:FLORISoriginal', False, pass_by_obj=True,
                                 desc='override all parameters and use FLORIS as original in first Wind Energy paper')
-        self.add_param('model_params:shearExp', 0.15, desc='wind shear exponent')
-        self.add_param('model_params:z_ref', 90., units='m', desc='height at which wind_speed is measured')
-        self.add_param('model_params:z0', 0., units='m', desc='ground height')
+        self.add_param('model_params:shearExp', 0.15, pass_by_obj=True, desc='wind shear exponent')
+        self.add_param('model_params:z_ref', 90., units='m', pass_by_obj=True, desc='height at which wind_speed is measured')
+        self.add_param('model_params:z0', 0., units='m', pass_by_obj=True, desc='ground height')
 
         # add corresponding unknowns
         self.add_output('floris_params:kd', 0.15 if not use_rotor_components else 0.17, pass_by_obj=True,
@@ -231,9 +231,9 @@ class FLORISParameters(Component):
                                 desc='if axial induction is not provided, then it will be calculated based on CT')
         self.add_output('floris_params:useaUbU', True, pass_by_obj=True,
                                 desc='if True then zone velocity decay rates (MU) will be adjusted based on yaw')
-        self.add_output('floris_params:shearExp', 0.15, desc='wind shear exponent')
-        self.add_output('floris_params:z_ref', 90., units='m', desc='height at which wind_speed is measured')
-        self.add_output('floris_params:z0', 0., units='m', desc='ground height')
+        self.add_output('floris_params:shearExp', 0.15, pass_by_obj=True, desc='wind shear exponent')
+        self.add_output('floris_params:z_ref', 90., pass_by_obj=True, units='m', desc='height at which wind_speed is measured')
+        self.add_output('floris_params:z0', 0., pass_by_obj=True, units='m', desc='ground height')
         # ################   Visualization   ###########################
         # shear layer (only influences visualization)
         self.add_output('floris_params:shearCoefficientAlpha', 0.10805, pass_by_obj=True)
