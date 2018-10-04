@@ -496,7 +496,7 @@ class WindDirectionPower(Component):
         # cp_curve_spline = params['cp_curve_spline']
         cp_curve_spline = self.cp_curve_spline
 
-        dCpdV = np.ones_like(Cp)
+        dCpdV = np.zeros_like(Cp)
 
         if self.cp_points > 1.:
             # print('entered Cp')
@@ -517,8 +517,8 @@ class WindDirectionPower(Component):
                 Cp = np.zeros_like(wtVelocity)
                 dCpdV = np.zeros_like(wtVelocity)
                 for i in np.arange(0, len(wtVelocity)):
-                 Cp[i] = cp_curve_spline(wtVelocity[i])
-                 dCpdV[i] = dCpdV_spline(wtVelocity[i])
+                    Cp[i] = cp_curve_spline(wtVelocity[i])
+                    dCpdV[i] = dCpdV_spline(wtVelocity[i])
 
                 # get dCp/dV from the spline
 
