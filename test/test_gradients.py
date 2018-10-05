@@ -229,11 +229,11 @@ class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
         for dir in np.arange(0, self.nDirections):
             np.testing.assert_allclose(self.J[('sc', 'yaw%i' % dir)]['rel error'], self.J[('sc', 'yaw%i' % dir)]['rel error'], self.rtol, self.atol)
 
-class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
+class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        super(TotalDerivTestsGaussAEPOpt, self).setUpClass()
+        super(TotalDerivTestsGaussAEPOpt_VestasV80, self).setUpClass()
         nTurbines = 16
         nDirections = 50
         self.rtol = 1E-2
@@ -274,7 +274,7 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         windFrequencies = np.random.rand(nDirections)
 
         # define turbine size
-        rotor_diameter = 126.4  # (m)
+        rotor_diameter = 80.  # (m)
         hub_height = 90.  # (m)
 
         # define turbine locations in global reference frame
@@ -307,7 +307,8 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         wake_model_options = {'nSamples': 0,
                               'nRotorPoints': nRotorPoints,
                               'use_ct_curve': True,
-                              'ct_curve': ct_curve,
+                              'ct_curve_ct': ct_curve[:, 1],
+                              'ct_curve_wind_speed': ct_curve[:, 0],
                               'interp_type': 1,
                               'differentiable': True}
 
@@ -418,7 +419,203 @@ class TotalDerivTestsGaussAEPOpt(unittest.TestCase):
         self.J = prob.check_total_derivatives()
         self.nDirections = nDirections
 
-    def testObj_x(self):
+    def testObj_x_v80(self):
+        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'],
+                                   self.J[('obj', 'turbineX')]['J_fd'],
+                                   self.rtol, self.atol)
+
+    def testObj_y(self):
+        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['J_fwd'],
+                                   self.J[('obj', 'turbineY')]['J_fd'],
+                                   self.rtol, self.atol)
+
+    def testObj_yaw(self):
+        for dir in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['J_fwd'],
+                                       self.J[('obj', 'yaw%i' % dir)]['J_fd'],
+                                       self.rtol, self.atol)
+
+class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+        super(TotalDerivTestsGaussAEPOpt_NREL5MW, self).setUpClass()
+        nTurbines = 16
+        nDirections = 50
+        self.rtol = 1E-2
+        self.atol = 1E5
+
+        np.random.seed(seed=10)
+
+        turbineX = np.random.rand(nTurbines)*3000.
+        turbineY = np.random.rand(nTurbines)*3000.
+
+        # generate boundary constraint
+        locations = np.zeros([nTurbines, 2])
+        for i in range(0, nTurbines):
+            locations[i] = np.array([turbineX[i], turbineY[i]])
+
+
+        # print(locations)
+        boundaryVertices, boundaryNormals = calculate_boundary(locations)
+        nVertices = len(boundaryNormals)
+
+        minSpacing = 2.
+        # minSpacing.flat()
+
+        # initialize input variable arrays
+        rotor_diameter = 126.4 #np.random.random()*150.
+        rotorDiameter = np.ones(nTurbines)*rotor_diameter
+        hubHeight = np.ones(nTurbines)*90.
+        axialInduction = np.ones(nTurbines)*1./3. #*np.random.random()*(1./3.)
+        Ct = np.ones(nTurbines)*np.random.random()
+        Cp = np.ones(nTurbines)*np.random.random()
+        generatorEfficiency = np.ones(nTurbines)*0.94 #*np.random.random()
+        yaw = np.zeros(nTurbines) # np.random.rand(nTurbines)*60. - 30.
+
+        # Define flow properties
+        windSpeeds = np.random.rand(nDirections)*20        # m/s
+        air_density = 1.1716    # kg/m^3
+        windDirections = np.random.rand(nDirections)*360.0
+        windFrequencies = np.random.rand(nDirections)
+
+        # define turbine size
+        rotor_diameter = 126.4  # (m)
+        hub_height = 90.  # (m)
+
+        filename = "./input_files/NREL5MWCPCT_dict.p"
+
+        data = pickle.load(open(filename, "rb"))
+        cpct_data = np.zeros([data['wind_speed'].size, 3])
+        cpct_data[:, 0] = data['wind_speed']
+        cpct_data[:, 1] = data['CP']
+        cpct_data[:, 2] = data['CT']
+
+        # air_density = 1.1716  # kg/m^3
+        Ar = 0.25 * np.pi * rotor_diameter ** 2
+        cp_curve_cp = cpct_data[:, 1]
+        cp_curve_vel = cpct_data[:, 0]
+        cp_curve_spline = UnivariateSpline(cp_curve_vel, cp_curve_cp, ext='const')
+        cp_curve_spline.set_smoothing_factor(.0001)
+
+        nRotorPoints = 1
+
+        wake_model_options = {'nSamples': 0,
+                              'nRotorPoints': nRotorPoints,
+                              'use_ct_curve': True,
+                              'ct_curve_ct': cpct_data[:, 2],
+                              'ct_curve_wind_speed': cpct_data[:, 0],
+                              'interp_type': 1,
+                              'differentiable': True}
+
+        z_ref = 70.0
+        z_0 = 0.0002
+        # z_0 = 0.000
+        TI = 0.077
+
+        # k_calc = 0.022
+        k_calc = 0.3837 * TI + 0.003678
+
+        wake_combination_method = 1
+        ti_calculation_method = 0
+        calc_k_star = True
+        sort_turbs = True
+        wake_model_version = 2014
+        expansion_factor = 3.
+        use_parallel_group=False
+
+        # print("HERE 0")
+        prob = Problem(root=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=nVertices,
+                                   minSpacing=minSpacing, use_rotor_components=False, wake_model=gauss_wrapper,
+                                   params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=True,
+                                   wake_model_options=wake_model_options,
+                                   params_IndepVar_args={'nRotorPoints': nRotorPoints},
+                                   cp_curve_spline=cp_curve_spline, cp_points=cp_curve_cp.size))
+        # print("HERE 1")
+        # set up optimizer
+        # prob.driver = pyOptSparseDriver()
+        # prob.driver.options['optimizer'] = 'SNOPT'
+        prob.driver.add_objective('obj', scaler=1)
+
+        # set optimizer options
+        # prob.driver.opt_settings['Verify level'] = 3
+        # prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
+        # prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
+        # prob.driver.opt_settings['Major iterations limit'] = 1
+
+        # select design variables
+        prob.driver.add_desvar('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1.0)
+        prob.driver.add_desvar('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1.0)
+        # prob.driver.add_desvar('hubHeight', lower=np.ones(nTurbines)*0.0, upper=np.ones(nTurbines)*120., scaler=1.0)
+        for direction_id in range(0, windDirections.size):
+            prob.driver.add_desvar('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1.0)
+
+        # add constraints
+        prob.driver.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
+        prob.driver.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1.0)
+
+        # initialize problem
+        prob.setup()
+
+        # assign values to constant inputs (not design variables)
+        prob['turbineX'] = turbineX
+        prob['turbineY'] = turbineY
+        prob['hubHeight'] = np.zeros_like(turbineX)+90.
+        prob['yaw0'] = yaw
+        prob['rotorDiameter'] = rotorDiameter
+        prob['axialInduction'] = axialInduction
+        prob['Ct_in'] = Ct
+        prob['Cp_in'] = Cp
+        prob['generatorEfficiency'] = generatorEfficiency
+        prob['windSpeeds'] = windSpeeds
+        prob['air_density'] = air_density
+        prob['windDirections'] = windDirections
+        prob['windFrequencies'] = windFrequencies
+
+        # provide values for hull constraint
+        prob['boundaryVertices'] = boundaryVertices
+        prob['boundaryNormals'] = boundaryNormals
+
+        # prob['AEP_method'] = 'none'
+        # prob['AEP_method'] = 'log'
+        # prob['AEP_method'] = 'inverse'
+
+        prob['rotorDiameter'] = rotorDiameter
+        prob['hubHeight'] = hubHeight
+        prob['axialInduction'] = axialInduction
+        prob['generatorEfficiency'] = generatorEfficiency
+        prob['windSpeeds'] = windSpeeds
+        prob['air_density'] = air_density
+        prob['windDirections'] = windDirections
+        prob['windFrequencies'] = windFrequencies
+        prob['Ct_in'] = Ct
+        prob['Cp_in'] = Cp
+        prob['cut_in_speed'] = np.ones(nTurbines) * 4.
+        # prob['cut_in_speed'] = np.ones(nTurbines)*7.
+        prob['rated_power'] = np.ones(nTurbines) * 2000.
+        prob['cp_curve_cp'] = cp_curve_cp
+        prob['cp_curve_vel'] = cp_curve_vel
+
+        prob['model_params:wake_combination_method'] = wake_combination_method
+        prob['model_params:ti_calculation_method'] = ti_calculation_method
+        prob['model_params:calc_k_star'] = calc_k_star
+        prob['model_params:sort'] = sort_turbs
+        prob['model_params:z_ref'] = z_ref
+        prob['model_params:z_0'] = z_0
+        prob['model_params:ky'] = k_calc
+        prob['model_params:kz'] = k_calc
+        prob['model_params:print_ti'] = False
+        prob['model_params:wake_model_version'] = wake_model_version
+        prob['model_params:opt_exp_fac'] = expansion_factor
+
+        # run problem
+        prob.run_once()
+
+        # pass results to self for use with unit test
+        self.J = prob.check_total_derivatives(out_stream=None)
+        self.nDirections = nDirections
+
+    def testObj_x_v80(self):
         np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'],
                                    self.J[('obj', 'turbineX')]['J_fd'],
                                    self.rtol, self.atol)

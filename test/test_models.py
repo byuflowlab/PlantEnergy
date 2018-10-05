@@ -13,7 +13,10 @@ from openmdao.api import Problem
 
 class test_floris(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
+        super(test_floris, self).setUpClass()
+
         try:
             from plantenergy.floris import floris_wrapper, add_floris_params_IndepVarComps
             self.working_import = True
@@ -103,10 +106,12 @@ class test_floris(unittest.TestCase):
     def testRun(self):
         np.testing.assert_allclose(self.prob['wtVelocity0'],  np.array([8., 8., 6.81027708, 6.81027708, 6.80533179, 6.80533179]))
 
-
 class test_jensen(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
+        super(test_jensen, self).setUpClass()
+
         try:
             from plantenergy.jensen import jensen_wrapper, add_jensen_params_IndepVarComps
             self.working_import = True
@@ -181,10 +186,12 @@ class test_jensen(unittest.TestCase):
     def testRun(self):
         np.testing.assert_allclose(self.prob['wtVelocity0'],  np.array([8.1, 8.1, 6.74484, 6.74484, 6.616713, 6.616713]))
 
-
 class test_guass(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
+        super(test_guass, self).setUpClass()
+
         try:
             from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
             self.working_import = True
