@@ -493,36 +493,29 @@ class WindDirectionPower(Component):
         cp_curve_cp = params['cp_curve_cp']
         cp_curve_vel = params['cp_curve_vel']
 
-        # cp_curve_spline = params['cp_curve_spline']
         cp_curve_spline = self.cp_curve_spline
 
         dCpdV = np.zeros_like(Cp)
 
-        if self.cp_points > 1.:
-            # print('entered Cp')
-            if cp_curve_spline is None:
-                # print('using interp')
-                for i in np.arange(0, nTurbines):
-                    Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
-                    # Cp[i] = spl(wtVelocity[i])
-                    dv = 1E-6
-                    dCpdV[i] = (np.interp(wtVelocity[i]+dv, cp_curve_vel, cp_curve_cp) -
-                             np.interp(wtVelocity[i]- dv, cp_curve_vel, cp_curve_cp))/(2.*dv)
-            else:
-                # print('using spline')
-                # get Cp from the spline
+        if self.cp_points > 1. and self.cp_curve_spline is None:
 
-                dCpdV_spline = cp_curve_spline.derivative()
+            for i in np.arange(0, nTurbines):
+                Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
+                # Cp[i] = spl(wtVelocity[i])
+                dv = 1E-6
+                dCpdV[i] = (np.interp(wtVelocity[i]+dv, cp_curve_vel, cp_curve_cp) -
+                         np.interp(wtVelocity[i]- dv, cp_curve_vel, cp_curve_cp))/(2.*dv)
 
-                Cp = np.zeros_like(wtVelocity)
-                dCpdV = np.zeros_like(wtVelocity)
-                for i in np.arange(0, len(wtVelocity)):
-                    Cp[i] = cp_curve_spline(wtVelocity[i])
-                    dCpdV[i] = dCpdV_spline(wtVelocity[i])
+        elif self.cp_curve_spline is not None:
+            # get Cp from the spline
 
-                # get dCp/dV from the spline
+            dCpdV_spline = cp_curve_spline.derivative()
 
-
+            Cp = np.zeros_like(wtVelocity)
+            dCpdV = np.zeros_like(wtVelocity)
+            for i in np.arange(0, len(wtVelocity)):
+                Cp[i] = cp_curve_spline(wtVelocity[i])
+                dCpdV[i] = dCpdV_spline(wtVelocity[i])
 
         # calcuate initial gradient values
         dwtPower_dwtVelocity = np.eye(nTurbines)*0.5*generatorEfficiency*air_density*rotorArea*\

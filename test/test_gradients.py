@@ -925,13 +925,13 @@ class GradientTestsGauss(unittest.TestCase):
             np.testing.assert_allclose(self.Jt[('obj', 'yaw%i' % dir)]['J_fwd'],
                                        self.Jt[('obj', 'yaw%i' % dir)]['J_fd'], self.rtol_t, self.atol_t)
 
-class GradientTestsCtCp(unittest.TestCase):
+class GradientTestsCtCpSingleValue(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        super(GradientTestsCtCp, self).setUpClass()
+        super(GradientTestsCtCpSingleValue, self).setUpClass()
 
-        nTurbines = 4
+        nTurbines = 15
         self.rtol = 1E-6
         self.atol = 1E-6
 
@@ -986,6 +986,152 @@ class GradientTestsCtCp(unittest.TestCase):
         np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Ct_out', 'Ct_in')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Ct_out', 'Ct_in')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Ct_out', 'Cp_in')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Ct_out', 'Cp_in')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Ct_out', 'yaw0')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Ct_out', 'yaw0')]['J_fd'], self.rtol, self.atol)
+
+    def testCtCp_Cp_out(self):
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Ct_in')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Ct_in')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Cp_in')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Cp_in')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'yaw0')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'yaw0')]['J_fd'], self.rtol, self.atol)
+
+class GradientTestsCpArray(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+        super(GradientTestsCpArray, self).setUpClass()
+
+        nTurbines = 15
+        self.rtol = 1E-6
+        self.atol = 1E-6
+
+        np.random.seed(seed=10)
+
+        turbineX = np.random.rand(nTurbines)*1000.
+        turbineY = np.random.rand(nTurbines)*1000.
+
+        # initialize input variable arrays
+        rotorDiameter = np.ones(nTurbines)*np.random.random()*150.
+        axialInduction = np.ones(nTurbines)*np.random.random()*(1./3.)
+        Ct = np.ones(nTurbines)*np.random.random()
+        Cp = np.ones(nTurbines)*np.random.random()
+        generatorEfficiency = np.ones(nTurbines)*np.random.random()
+        yaw = np.random.rand(nTurbines)*60. - 30.
+
+        # Define flow properties
+        wind_speed = np.random.random()*20        # m/s
+        air_density = 1.1716    # kg/m^3
+        wind_direction = np.random.random()*360    # deg (N = 0 deg., using direction FROM, as in met-mast data)
+        wind_frequency = np.random.random()    # probability of wind in given direction
+
+        # load cp_curve
+        import cPickle as pickle
+        data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "r"))
+
+        cp_curve_vel = data["wind_speed"]
+        cp_curve_cp = data["CP"]
+        cp_points = cp_curve_cp.size
+
+        # set up problem
+        prob = Problem(root=AEPGroup(nTurbines=nTurbines, use_rotor_components=False, cp_points=cp_points))
+
+        # initialize problem
+        prob.setup()
+
+        # assign values to constant inputs (not design variables)
+                # assign values to constant inputs (not design variables)
+        prob['turbineX'] = turbineX
+        prob['turbineY'] = turbineY
+        prob['yaw0'] = yaw
+        prob['rotorDiameter'] = rotorDiameter
+        prob['axialInduction'] = axialInduction
+        prob['Ct_in'] = Ct
+        prob['Cp_in'] = Cp
+        prob['cp_curve_cp'] = cp_curve_cp
+        prob['cp_curve_vel'] = cp_curve_vel
+        prob['generatorEfficiency'] = generatorEfficiency
+        prob['windSpeeds'] = np.array([wind_speed])
+        prob['windFrequencies'] = np.array([wind_frequency])
+        prob['air_density'] = air_density
+        prob['windDirections'] = np.array([wind_direction])
+        prob['model_params:FLORISoriginal'] = False
+
+        # run problem
+        prob.run()
+
+        # pass gradient test results to self for use with unit tests
+        self.J = prob.check_partial_derivatives(out_stream=None)
+
+    def testCtCp_Cp_out(self):
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Ct_in')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Ct_in')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Cp_in')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Cp_in')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'yaw0')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'yaw0')]['J_fd'], self.rtol, self.atol)
+
+class GradientTestsCpSpline(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+        super(GradientTestsCpSpline, self).setUpClass()
+
+        nTurbines = 15
+        self.rtol = 1E-6
+        self.atol = 1E-6
+
+        np.random.seed(seed=10)
+
+        turbineX = np.random.rand(nTurbines)*1000.
+        turbineY = np.random.rand(nTurbines)*1000.
+
+        # initialize input variable arrays
+        rotorDiameter = np.ones(nTurbines)*np.random.random()*150.
+        axialInduction = np.ones(nTurbines)*np.random.random()*(1./3.)
+        Ct = np.ones(nTurbines)*np.random.random()
+        Cp = np.ones(nTurbines)*np.random.random()
+        generatorEfficiency = np.ones(nTurbines)*np.random.random()
+        yaw = np.random.rand(nTurbines)*60. - 30.
+
+        # Define flow properties
+        wind_speed = np.random.random()*20        # m/s
+        air_density = 1.1716    # kg/m^3
+        wind_direction = np.random.random()*360    # deg (N = 0 deg., using direction FROM, as in met-mast data)
+        wind_frequency = np.random.random()    # probability of wind in given direction
+
+        # load cp_curve
+        import cPickle as pickle
+        data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "r"))
+
+        cp_curve_vel = data["wind_speed"]
+        cp_curve_cp = data["CP"]
+        cp_points = cp_curve_cp.size
+
+        cp_curve_spline = UnivariateSpline(cp_curve_vel, cp_curve_cp, ext='const', k=1)
+        cp_curve_spline.set_smoothing_factor(.000001)
+
+        # set up problem
+        prob = Problem(root=AEPGroup(nTurbines=nTurbines, use_rotor_components=False,
+                                     cp_curve_spline=cp_curve_spline))
+
+        # initialize problem
+        prob.setup()
+
+        # assign values to constant inputs (not design variables)
+                # assign values to constant inputs (not design variables)
+        prob['turbineX'] = turbineX
+        prob['turbineY'] = turbineY
+        prob['yaw0'] = yaw
+        prob['rotorDiameter'] = rotorDiameter
+        prob['axialInduction'] = axialInduction
+        prob['Ct_in'] = Ct
+        prob['Cp_in'] = Cp
+        prob['generatorEfficiency'] = generatorEfficiency
+        prob['windSpeeds'] = np.array([wind_speed])
+        prob['windFrequencies'] = np.array([wind_frequency])
+        prob['air_density'] = air_density
+        prob['windDirections'] = np.array([wind_direction])
+        prob['model_params:FLORISoriginal'] = False
+
+        # run problem
+        prob.run()
+
+        # pass gradient test results to self for use with unit tests
+        self.J = prob.check_partial_derivatives(out_stream=None)
 
     def testCtCp_Cp_out(self):
         np.testing.assert_allclose(self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Ct_in')]['J_fwd'], self.J['all_directions.direction_group0.CtCp'][('Cp_out', 'Ct_in')]['J_fd'], self.rtol, self.atol)
@@ -1164,9 +1310,9 @@ class GradientTestsConstraintComponents(unittest.TestCase):
     def setUpClass(self):
         super(GradientTestsConstraintComponents, self).setUpClass()
 
-        nTurbines = 3
+        nTurbines = 38
         self.rtol = 1E-6
-        self.atol = 1E-6
+        self.atol = 1E-3
 
         np.random.seed(seed=10)
 
