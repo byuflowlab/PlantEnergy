@@ -1,7 +1,7 @@
 from openmdao.api import Component, Group, Problem, IndepVarComp
 from akima import Akima, akima_interp
 from plantenergy.utilities import hermite_spline
-import plantenergy.config
+import plantenergy.config as config
 
 import numpy as np
 from scipy import interp
@@ -341,7 +341,7 @@ class WindFarmAEP(Component):
             rank = comm.rank
             config.sens_func_calls_array[rank] += 1
             # print(np.sum(config.sens_func_calls_array))
-        print "in linearize AEP"
+        # print "in linearize AEP"
         return J
 
 
