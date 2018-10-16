@@ -289,17 +289,17 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
 
         # air_density = 1.1716  # kg/m^3
         Ar = 0.25 * np.pi * rotor_diameter ** 2
-        # cp_curve_vel = ct_curve[:, 0]
+        # cp_curve_wind_speed = ct_curve[:, 0]
         power_data = np.loadtxt('./input_files/niayifar_vestas_v80_power_curve_observed.txt', delimiter=',')
-        # cp_curve_cp = niayifar_power_model(cp_curve_vel)/(0.5*air_density*cp_curve_vel**3*Ar)
+        # cp_curve_cp = niayifar_power_model(cp_curve_wind_speed)/(0.5*air_density*cp_curve_wind_speed**3*Ar)
         cp_curve_cp = power_data[:, 1] * (1E6) / (0.5 * air_density * power_data[:, 0] ** 3 * Ar)
-        cp_curve_vel = power_data[:, 0]
-        cp_curve_spline = UnivariateSpline(cp_curve_vel, cp_curve_cp, ext='const')
+        cp_curve_wind_speed = power_data[:, 0]
+        cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const')
         cp_curve_spline.set_smoothing_factor(.0001)
         # cp_curve_spline = None
         # xs = np.linspace(0, 35, 1000)
         # plt.plot(xs, cp_curve_spline(xs))
-        # plt.scatter(cp_curve_vel, cp_curve_cp)
+        # plt.scatter(cp_curve_wind_speed, cp_curve_cp)
         # plt.show()
         # quit()
         nRotorPoints = 1
@@ -398,7 +398,7 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
         # prob['cut_in_speed'] = np.ones(nTurbines)*7.
         prob['rated_power'] = np.ones(nTurbines) * 2000.
         prob['cp_curve_cp'] = cp_curve_cp
-        prob['cp_curve_vel'] = cp_curve_vel
+        prob['cp_curve_wind_speed'] = cp_curve_wind_speed
 
         prob['model_params:wake_combination_method'] = wake_combination_method
         prob['model_params:ti_calculation_method'] = ti_calculation_method
@@ -494,8 +494,8 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         # air_density = 1.1716  # kg/m^3
         Ar = 0.25 * np.pi * rotor_diameter ** 2
         cp_curve_cp = cpct_data[:, 1]
-        cp_curve_vel = cpct_data[:, 0]
-        cp_curve_spline = UnivariateSpline(cp_curve_vel, cp_curve_cp, ext='const')
+        cp_curve_wind_speed = cpct_data[:, 0]
+        cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const')
         cp_curve_spline.set_smoothing_factor(.0001)
 
         nRotorPoints = 1
@@ -594,7 +594,7 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         # prob['cut_in_speed'] = np.ones(nTurbines)*7.
         prob['rated_power'] = np.ones(nTurbines) * 2000.
         prob['cp_curve_cp'] = cp_curve_cp
-        prob['cp_curve_vel'] = cp_curve_vel
+        prob['cp_curve_wind_speed'] = cp_curve_wind_speed
 
         prob['model_params:wake_combination_method'] = wake_combination_method
         prob['model_params:ti_calculation_method'] = ti_calculation_method
@@ -768,17 +768,17 @@ class GradientTestsGauss(unittest.TestCase):
 
         # air_density = 1.1716  # kg/m^3
         Ar = 0.25 * np.pi * rotor_diameter ** 2
-        # cp_curve_vel = ct_curve[:, 0]
+        # cp_curve_wind_speed = ct_curve[:, 0]
         power_data = np.loadtxt('./input_files/niayifar_vestas_v80_power_curve_observed.txt', delimiter=',')
-        # cp_curve_cp = niayifar_power_model(cp_curve_vel)/(0.5*air_density*cp_curve_vel**3*Ar)
+        # cp_curve_cp = niayifar_power_model(cp_curve_wind_speed)/(0.5*air_density*cp_curve_wind_speed**3*Ar)
         cp_curve_cp = power_data[:, 1] * (1E6) / (0.5 * air_density * power_data[:, 0] ** 3 * Ar)
-        cp_curve_vel = power_data[:, 0]
-        cp_curve_spline = UnivariateSpline(cp_curve_vel, cp_curve_cp, ext='const')
+        cp_curve_wind_speed = power_data[:, 0]
+        cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const')
         cp_curve_spline.set_smoothing_factor(.0001)
         # cp_curve_spline = None
         # xs = np.linspace(0, 35, 1000)
         # plt.plot(xs, cp_curve_spline(xs))
-        # plt.scatter(cp_curve_vel, cp_curve_cp)
+        # plt.scatter(cp_curve_wind_speed, cp_curve_cp)
         # plt.show()
         # quit()
         nRotorPoints = 1
@@ -813,7 +813,7 @@ class GradientTestsGauss(unittest.TestCase):
                                               wake_model=gauss_wrapper, wake_model_options=wake_model_options,
                                               params_IdepVar_func=add_gauss_params_IndepVarComps,
                                               params_IndepVar_args={'nRotorPoints': nRotorPoints},
-                                              cp_curve_spline=cp_curve_spline, cp_points=cp_curve_vel.size))
+                                              cp_curve_spline=cp_curve_spline, cp_points=cp_curve_wind_speed.size))
 
         # set up optimizer
         prob.driver = pyOptSparseDriver()
@@ -867,7 +867,7 @@ class GradientTestsGauss(unittest.TestCase):
         # prob['cut_in_speed'] = np.ones(nTurbines)*7.
         prob['rated_power'] = np.ones(nTurbines) * 2000.
         prob['cp_curve_cp'] = cp_curve_cp
-        prob['cp_curve_vel'] = cp_curve_vel
+        prob['cp_curve_wind_speed'] = cp_curve_wind_speed
 
         prob['model_params:wake_combination_method'] = wake_combination_method
         prob['model_params:ti_calculation_method'] = ti_calculation_method
@@ -1025,7 +1025,7 @@ class GradientTestsCpArray(unittest.TestCase):
         import cPickle as pickle
         data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "r"))
 
-        cp_curve_vel = data["wind_speed"]
+        cp_curve_wind_speed = data["wind_speed"]
         cp_curve_cp = data["CP"]
         cp_points = cp_curve_cp.size
 
@@ -1045,7 +1045,7 @@ class GradientTestsCpArray(unittest.TestCase):
         prob['Ct_in'] = Ct
         prob['Cp_in'] = Cp
         prob['cp_curve_cp'] = cp_curve_cp
-        prob['cp_curve_vel'] = cp_curve_vel
+        prob['cp_curve_wind_speed'] = cp_curve_wind_speed
         prob['generatorEfficiency'] = generatorEfficiency
         prob['windSpeeds'] = np.array([wind_speed])
         prob['windFrequencies'] = np.array([wind_frequency])
@@ -1097,11 +1097,11 @@ class GradientTestsCpSpline(unittest.TestCase):
         import cPickle as pickle
         data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "r"))
 
-        cp_curve_vel = data["wind_speed"]
+        cp_curve_wind_speed = data["wind_speed"]
         cp_curve_cp = data["CP"]
         cp_points = cp_curve_cp.size
 
-        cp_curve_spline = UnivariateSpline(cp_curve_vel, cp_curve_cp, ext='const', k=1)
+        cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const', k=1)
         cp_curve_spline.set_smoothing_factor(.000001)
 
         # set up problem
@@ -1249,17 +1249,17 @@ class GradientTestsPower(unittest.TestCase):
 
         # air_density = 1.1716  # kg/m^3
         Ar = 0.25 * np.pi * rotorDiameter[0] ** 2
-        # cp_curve_vel = ct_curve[:, 0]
+        # cp_curve_wind_speed = ct_curve[:, 0]
         power_data = np.loadtxt('./input_files/niayifar_vestas_v80_power_curve_observed.txt', delimiter=',')
-        # cp_curve_cp = niayifar_power_model(cp_curve_vel)/(0.5*air_density*cp_curve_vel**3*Ar)
+        # cp_curve_cp = niayifar_power_model(cp_curve_wind_speed)/(0.5*air_density*cp_curve_wind_speed**3*Ar)
         cp_curve_cp = power_data[:, 1] * (1E6) / (0.5 * air_density * power_data[:, 0] ** 3 * Ar)
-        cp_curve_vel = power_data[:, 0]
-        cp_curve_spline = UnivariateSpline(cp_curve_vel, cp_curve_cp, ext='const')
+        cp_curve_wind_speed = power_data[:, 0]
+        cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const')
         cp_curve_spline.set_smoothing_factor(.0001)
 
         # set up problem
         prob = Problem(root=AEPGroup(nTurbines=nTurbines, use_rotor_components=False, wake_model=gauss_wrapper,
-                                     cp_points=cp_curve_vel.size, cp_curve_spline=cp_curve_spline))
+                                     cp_points=cp_curve_wind_speed.size, cp_curve_spline=cp_curve_spline))
 
         # initialize problem
         prob.setup()
@@ -1285,7 +1285,7 @@ class GradientTestsPower(unittest.TestCase):
         # prob['cut_in_speed'] = np.ones(nTurbines)*7.
         prob['rated_power'] = np.ones(nTurbines) * 2000.
         prob['cp_curve_cp'] = cp_curve_cp
-        prob['cp_curve_vel'] = cp_curve_vel
+        prob['cp_curve_wind_speed'] = cp_curve_wind_speed
         # prob['use_cp_spline'] = True
 
         # run problem

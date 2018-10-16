@@ -382,8 +382,8 @@ class WindDirectionPower(Component):
                        desc='cut-in speed for each turbine', pass_by_obj=True)
         self.add_param('cp_curve_cp', np.zeros(cp_points),
                        desc='cp as a function of wind speed', pass_by_obj=True)
-        self.add_param('cp_curve_vel', np.ones(cp_points), units='m/s',
-                       desc='vel corresponding to cp curve points', pass_by_obj=True)
+        self.add_param('cp_curve_wind_speed', np.ones(cp_points), units='m/s',
+                       desc='wind speeds corresponding to cp curve cp points', pass_by_obj=True)
         # self.add_param('cp_curve_spline', None, units='m/s',
         #                desc='spline corresponding to cp curve', pass_by_obj=True)
 
@@ -406,7 +406,7 @@ class WindDirectionPower(Component):
         generatorEfficiency = params['generatorEfficiency']
 
         cp_curve_cp = params['cp_curve_cp']
-        cp_curve_vel = params['cp_curve_vel']
+        cp_curve_wind_speed = params['cp_curve_wind_speed']
         # cp_curve_spline = params['cp_curve_spline']
         cp_curve_spline = self.cp_curve_spline
 
@@ -414,7 +414,7 @@ class WindDirectionPower(Component):
             # print('entered Cp')
             if cp_curve_spline is None:
                 for i in np.arange(0, nTurbines):
-                    Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
+                    Cp[i] = np.interp(wtVelocity[i], cp_curve_wind_speed, cp_curve_cp)
                     # Cp[i] = spl(wtVelocity[i])
             else:
                 # print('using spline')
@@ -491,7 +491,7 @@ class WindDirectionPower(Component):
         wtPower = unknowns['wtPower%i' % direction_id]
 
         cp_curve_cp = params['cp_curve_cp']
-        cp_curve_vel = params['cp_curve_vel']
+        cp_curve_wind_speed = params['cp_curve_wind_speed']
 
         cp_curve_spline = self.cp_curve_spline
 
@@ -500,11 +500,11 @@ class WindDirectionPower(Component):
         if self.cp_points > 1. and self.cp_curve_spline is None:
 
             for i in np.arange(0, nTurbines):
-                Cp[i] = np.interp(wtVelocity[i], cp_curve_vel, cp_curve_cp)
+                Cp[i] = np.interp(wtVelocity[i], cp_curve_wind_speed, cp_curve_cp)
                 # Cp[i] = spl(wtVelocity[i])
                 dv = 1E-6
-                dCpdV[i] = (np.interp(wtVelocity[i]+dv, cp_curve_vel, cp_curve_cp) -
-                         np.interp(wtVelocity[i]- dv, cp_curve_vel, cp_curve_cp))/(2.*dv)
+                dCpdV[i] = (np.interp(wtVelocity[i]+dv, cp_curve_wind_speed, cp_curve_cp) -
+                         np.interp(wtVelocity[i]- dv, cp_curve_wind_speed, cp_curve_cp))/(2.*dv)
 
         elif self.cp_curve_spline is not None:
             # get Cp from the spline

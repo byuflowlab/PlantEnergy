@@ -81,7 +81,7 @@ class COEGroup(Group):
 
         self.add('dv12', IndepVarComp('cp_curve_cp', np.zeros(datasize),
                                                desc='cp curve cp data', pass_by_obj=True), promotes=['*'])
-        self.add('dv13', IndepVarComp('cp_curve_vel', np.zeros(datasize), units='m/s',
+        self.add('dv13', IndepVarComp('cp_curve_wind_speed', np.zeros(datasize), units='m/s',
                                                desc='cp curve velocity data', pass_by_obj=True), promotes=['*'])
         self.add('dv14', IndepVarComp('cut_in_speed', np.zeros(nTurbines), units='m/s',
                                                desc='cut-in speed of wind turbines', pass_by_obj=True), promotes=['*'])
@@ -139,14 +139,14 @@ class COEGroup(Group):
                        promotes=(['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight', 'rated_power', 'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
-                                  'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp', 'cp_curve_vel']
+                                  'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp', 'cp_curve_wind_speed']
                                  if (nSamples == 0) else
                                  ['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight',  'rated_power', 'cut_in_speed', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                   'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
                                   'dir_power%i' % direction_id, 'wsArray%i' % direction_id, 'cut_in_speed', 'cp_curve_cp',
-                                  'cp_curve_vel']))
+                                  'cp_curve_wind_speed']))
 
         # print("parallel groups initialized")
         self.add('powerMUX', MUX(nDirections, units=power_units))
