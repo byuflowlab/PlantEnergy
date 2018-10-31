@@ -517,7 +517,7 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         k_calc = 0.3837 * TI + 0.003678
 
         wake_combination_method = 1
-        ti_calculation_method = 0
+        ti_calculation_method = 5
         calc_k_star = True
         sort_turbs = True
         wake_model_version = 2014
