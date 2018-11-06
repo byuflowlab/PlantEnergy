@@ -1218,11 +1218,11 @@ class GradientTestsCtCpRotor(unittest.TestCase):
         np.testing.assert_allclose(self.J['all_directions.direction_group0.rotorGroup.CtCp'][('Ct_out', 'yaw0')]['J_fwd'], self.J['all_directions.direction_group0.rotorGroup.CtCp'][('Ct_out', 'yaw0')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J['all_directions.direction_group0.rotorGroup.CtCp'][('Ct_out', 'wtVelocity0')]['J_fwd'], self.J['all_directions.direction_group0.rotorGroup.CtCp'][('Ct_out', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
 
-class GradientTestsPower(unittest.TestCase):
+class GradientTestsPowerCP(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        super(GradientTestsPower, self).setUpClass()
+        super(GradientTestsPowerCP, self).setUpClass()
 
         nTurbines = 4
         self.rtol = 1E-6
@@ -1303,6 +1303,119 @@ class GradientTestsPower(unittest.TestCase):
         np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fd'], self.rtol, self.atol)
         np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
+
+class GradientTestsPowerCurveDefinition(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+        super(GradientTestsPowerCurveDefinition, self).setUpClass()
+
+        nTurbines = 4
+        self.rtol = 1E-6
+        self.atol = 1E-6
+
+        np.random.seed(seed=10)
+
+        turbineX = np.random.rand(nTurbines)*3000.
+        turbineY = np.random.rand(nTurbines)*3000.
+
+        # initialize input variable arrays
+        rotorDiameter = np.ones(nTurbines)*np.random.random()*150.
+        axialInduction = np.ones(nTurbines)*np.random.random()*(1./3.)
+        Ct = np.ones(nTurbines)*np.random.random()
+        Cp = np.ones(nTurbines)*np.random.random()
+        generatorEfficiency = np.ones(nTurbines)*np.random.random()
+        yaw = np.random.rand(nTurbines)*60. - 30.
+
+        # Define flow properties
+        wind_speed = np.random.random()*20.       # m/s
+        air_density = 1.1716    # kg/m^3
+        wind_direction = np.random.random()*360    # deg (N = 0 deg., using direction FROM, as in met-mast data)
+        wind_frequency = np.random.random()    # probability of wind in given direction
+
+        # air_density = 1.1716  # kg/m^3
+        Ar = 0.25 * np.pi * rotorDiameter[0] ** 2
+
+        # set up problem
+        prob = Problem(root=AEPGroup(nTurbines=nTurbines, use_rotor_components=False, wake_model=gauss_wrapper))
+
+        # initialize problem
+        prob.setup()
+
+        # assign values to constant inputs (not design variables)
+                # assign values to constant inputs (not design variables)
+        prob['turbineX'] = turbineX
+        prob['turbineY'] = turbineY
+        prob['yaw0'] = yaw
+        prob['rotorDiameter'] = rotorDiameter
+        prob['axialInduction'] = axialInduction
+        prob['Ct_in'] = Ct
+        prob['Cp_in'] = Cp
+        prob['generatorEfficiency'] = generatorEfficiency
+        prob['windSpeeds'] = np.array([wind_speed])
+        prob['windFrequencies'] = np.array([wind_frequency])
+        prob['air_density'] = air_density
+        prob['windDirections'] = np.array([wind_direction])
+        prob['model_params:FLORISoriginal'] = False
+
+
+        prob['cut_in_speed'] = np.ones(nTurbines) * 4.
+        prob['cut_out_speed'] = np.ones(nTurbines)*7.
+        prob['rated_power'] = np.ones(nTurbines) * 2000.
+        prob['rated_wind_speed'] = np.ones(nTurbines)*15.
+        prob['use_power_curve_definition'] = True
+
+        # run problem
+        prob.run()
+        self.prob=prob
+        # pass gradient test results to self for use with unit tests
+        self.J = prob.check_partial_derivatives(out_stream=None)
+
+    def testPower_wtPower(self):
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('wtPower0', 'wtVelocity0')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('wtPower0', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('wtPower0', 'Cp')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('wtPower0', 'Cp')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('wtPower0', 'rotorDiameter')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('wtPower0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
+
+    def testPower_totalpower(self):
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fwd'], self.J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
+
+    def testPower_wtPower_high(self):
+        prob = self.prob
+        prob['windSpeeds'] = np.array([20.])
+        prob.run()
+        J = prob.check_partial_derivatives(out_stream=None)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('wtPower0', 'wtVelocity0')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('wtPower0', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('wtPower0', 'Cp')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('wtPower0', 'Cp')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('wtPower0', 'rotorDiameter')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('wtPower0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
+
+    def testPower_totalpower_high(self):
+        prob = self.prob
+        prob['windSpeeds'] = np.array([20.])
+        prob.run()
+        J = prob.check_partial_derivatives(out_stream=None)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
+
+    def testPower_wtPower_low(self):
+        prob = self.prob
+        prob['windSpeeds'] = np.array([1.])
+        prob.run()
+        J = prob.check_partial_derivatives(out_stream=None)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('wtPower0', 'wtVelocity0')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('wtPower0', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('wtPower0', 'Cp')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('wtPower0', 'Cp')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('wtPower0', 'rotorDiameter')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('wtPower0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
+
+    def testPower_totalpower_low(self):
+        prob = self.prob
+        prob['windSpeeds'] = np.array([1.])
+        prob.run()
+        J = prob.check_partial_derivatives(out_stream=None)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('dir_power0', 'wtVelocity0')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('dir_power0', 'Cp')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fwd'], J['all_directions.direction_group0.powerComp'][('dir_power0', 'rotorDiameter')]['J_fd'], self.rtol, self.atol)
 
 class GradientTestsConstraintComponents(unittest.TestCase):
 

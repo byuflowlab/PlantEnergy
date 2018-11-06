@@ -113,7 +113,7 @@ class DirectionGroup(Group):
                  promotes=['air_density', 'generatorEfficiency', 'rotorDiameter',
                            'wtVelocity%i' % direction_id, 'rated_power',
                            'wtPower%i' % direction_id, 'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp',
-                           'cp_curve_wind_speed'])
+                           'cp_curve_wind_speed','cut_out_speed', 'rated_wind_speed', 'use_power_curve_definition'])
 
         if use_rotor_components:
             self.connect('rotorGroup.Cp_out', 'powerComp.Cp')
@@ -222,14 +222,15 @@ class AEPGroup(Group):
                        promotes=(['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight', 'rated_power', 'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
-                                  'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp', 'cp_curve_wind_speed']
+                                  'dir_power%i' % direction_id, 'cut_in_speed', 'cp_curve_cp', 'cp_curve_wind_speed',
+                                  'cut_out_speed', 'rated_wind_speed', 'use_power_curve_definition']
                                  if (nSamples == 0) else
                                  ['Ct_in', 'Cp_in', 'gen_params:*', 'model_params:*', 'air_density', 'axialInduction',
                                   'generatorEfficiency', 'turbineX', 'turbineY', 'yaw%i' % direction_id, 'rotorDiameter',
                                   'hubHeight',  'rated_power', 'cut_in_speed', 'wsPositionX', 'wsPositionY', 'wsPositionZ',
                                   'wtVelocity%i' % direction_id, 'wtPower%i' % direction_id,
                                   'dir_power%i' % direction_id, 'wsArray%i' % direction_id, 'cut_in_speed', 'cp_curve_cp',
-                                  'cp_curve_wind_speed']))
+                                  'cp_curve_wind_speed', 'cut_out_speed', 'rated_wind_speed', 'use_power_curve_definition']))
 
         # print("parallel groups initialized")
         self.add('powerMUX', MUX(nDirections, units=power_units))
