@@ -389,9 +389,9 @@ class WindDirectionPower(Component):
 
         # for power curve calculation
         self.add_param('use_power_curve_definition', val=False, pass_by_obj=True)
-        self.add_param('rated_wind_speed', np.ones(nTurbines) * 5000., units='kW',
+        self.add_param('rated_wind_speed', np.ones(nTurbines)*11.4, units='m/s',
                        desc='rated wind speed for each turbine', pass_by_obj=True)
-        self.add_param('cut_out_speed', np.ones(nTurbines) * 3.0, units='m/s',
+        self.add_param('cut_out_speed', np.ones(nTurbines) * 25.0, units='m/s',
                        desc='cut-out speed for each turbine', pass_by_obj=True)
         # self.add_param('cp_curve_spline', None, units='m/s',
         #                desc='spline corresponding to cp curve', pass_by_obj=True)
