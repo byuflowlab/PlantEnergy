@@ -347,7 +347,7 @@ class WindFarmAEP(Component):
 
 class WindDirectionPower(Component):
 
-    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1.,
+    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1,
                  cp_curve_spline=None):
 
         super(WindDirectionPower, self).__init__()
@@ -427,7 +427,7 @@ class WindDirectionPower(Component):
             wtPower = np.zeros(nTurbines)
 
             # Check to see if turbine produces power for experienced wind speed
-            for n in range(nTurbines):
+            for n in np.arange(0, nTurbines):
                 # If we're between the cut-in and rated wind speeds
                 if ((cut_in_speed[n] <= wtVelocity[n])
                         and (wtVelocity[n] < rated_wind_speed[n])):
@@ -537,7 +537,7 @@ class WindDirectionPower(Component):
             dwtPower_dwtVelocity = np.zeros([nTurbines, nTurbines])
 
             # Check to see if turbine produces power for experienced wind speed
-            for n in range(nTurbines):
+            for n in np.arange(0, nTurbines):
                 # If we're between the cut-in and rated wind speeds
                 if ((cut_in_speed[n] <= wtVelocity[n])
                         and (wtVelocity[n] < rated_wind_speed[n])):
