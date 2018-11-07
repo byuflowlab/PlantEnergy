@@ -161,12 +161,18 @@ class AEPGroup(Group):
         if not use_rotor_components:
             self.add('dv10', IndepVarComp('Ct_in', np.zeros(nTurbines)), promotes=['*'])
             self.add('dv11', IndepVarComp('Cp_in', np.zeros(nTurbines)), promotes=['*'])
+            self.add('dv12', IndepVarComp('cut_out_speed', val=np.zeros(nTurbines), units='m/s',
+                                                   pass_by_obj=True), promotes=['*'])
+            self.add('dv14', IndepVarComp('rated_wind_speed', val=np.zeros(nTurbines), units='m/s',
+                                                   pass_by_obj=True), promotes=['*'])
+            self.add('dv15', IndepVarComp('use_power_curve_definition', val=True,
+                                                   pass_by_obj=True), promotes=['*'])
 
-        self.add('dv12', IndepVarComp('cp_curve_cp', np.zeros(datasize),
+        self.add('dv16', IndepVarComp('cp_curve_cp', np.zeros(datasize),
                                                desc='cp curve cp data', pass_by_obj=True), promotes=['*'])
-        self.add('dv13', IndepVarComp('cp_curve_wind_speed', np.zeros(datasize), units='m/s',
+        self.add('dv17', IndepVarComp('cp_curve_wind_speed', np.zeros(datasize), units='m/s',
                                                desc='cp curve velocity data', pass_by_obj=True), promotes=['*'])
-        self.add('dv14', IndepVarComp('cut_in_speed', np.zeros(nTurbines), units='m/s',
+        self.add('dv18', IndepVarComp('cut_in_speed', np.zeros(nTurbines), units='m/s',
                                                desc='cut-in speed of wind turbines', pass_by_obj=True), promotes=['*'])
 
 

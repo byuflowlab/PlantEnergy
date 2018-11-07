@@ -1305,7 +1305,7 @@ class GradientTestsPowerCurveDefinition(unittest.TestCase):
     def setUpClass(self):
         super(GradientTestsPowerCurveDefinition, self).setUpClass()
 
-        nTurbines = 4
+        nTurbines = 10
         self.rtol = 1E-6
         self.atol = 1E-6
 
@@ -1325,14 +1325,14 @@ class GradientTestsPowerCurveDefinition(unittest.TestCase):
         # Define flow properties
         wind_speed = np.random.random()*20.       # m/s
         air_density = 1.1716    # kg/m^3
-        wind_direction = np.random.random()*360    # deg (N = 0 deg., using direction FROM, as in met-mast data)
-        wind_frequency = np.random.random()    # probability of wind in given direction
+        wind_direction = np.random.rand(10)*360    # deg (N = 0 deg., using direction FROM, as in met-mast data)
+        wind_frequency = np.random.rand(10)    # probability of wind in given direction
 
         # air_density = 1.1716  # kg/m^3
         Ar = 0.25 * np.pi * rotorDiameter[0] ** 2
 
         # set up problem
-        prob = Problem(root=AEPGroup(nTurbines=nTurbines, use_rotor_components=False, wake_model=gauss_wrapper))
+        prob = Problem(root=AEPGroup(nTurbines=nTurbines, use_rotor_components=False, wake_model=gauss_wrapper, nDirections=10))
 
         # initialize problem
         prob.setup()

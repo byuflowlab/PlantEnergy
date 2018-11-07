@@ -347,7 +347,7 @@ class WindFarmAEP(Component):
 
 class WindDirectionPower(Component):
 
-    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1.,
+    def __init__(self, nTurbines, direction_id=0, differentiable=True, use_rotor_components=False, cp_points=1,
                  cp_curve_spline=None):
 
         super(WindDirectionPower, self).__init__()
@@ -389,9 +389,9 @@ class WindDirectionPower(Component):
 
         # for power curve calculation
         self.add_param('use_power_curve_definition', val=False, pass_by_obj=True)
-        self.add_param('rated_wind_speed', np.ones(nTurbines) * 5000., units='kW',
+        self.add_param('rated_wind_speed', np.ones(nTurbines)*11.4, units='m/s',
                        desc='rated wind speed for each turbine', pass_by_obj=True)
-        self.add_param('cut_out_speed', np.ones(nTurbines) * 3.0, units='m/s',
+        self.add_param('cut_out_speed', np.ones(nTurbines) * 25.0, units='m/s',
                        desc='cut-out speed for each turbine', pass_by_obj=True)
         # self.add_param('cp_curve_spline', None, units='m/s',
         #                desc='spline corresponding to cp curve', pass_by_obj=True)
@@ -427,7 +427,7 @@ class WindDirectionPower(Component):
             wtPower = np.zeros(nTurbines)
 
             # Check to see if turbine produces power for experienced wind speed
-            for n in range(nTurbines):
+            for n in np.arange(0, nTurbines):
                 # If we're between the cut-in and rated wind speeds
                 if ((cut_in_speed[n] <= wtVelocity[n])
                         and (wtVelocity[n] < rated_wind_speed[n])):
@@ -537,7 +537,7 @@ class WindDirectionPower(Component):
             dwtPower_dwtVelocity = np.zeros([nTurbines, nTurbines])
 
             # Check to see if turbine produces power for experienced wind speed
-            for n in range(nTurbines):
+            for n in np.arange(0, nTurbines):
                 # If we're between the cut-in and rated wind speeds
                 if ((cut_in_speed[n] <= wtVelocity[n])
                         and (wtVelocity[n] < rated_wind_speed[n])):
