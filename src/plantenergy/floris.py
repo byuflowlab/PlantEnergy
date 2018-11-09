@@ -127,6 +127,10 @@ def add_floris_params_IndepVarComps(openmdao_object, use_rotor_components=False)
                                                   'parametric model for wake effect-a CFD simulation study'),
                         promotes=['*'])
 
+    # ###############    Wake Expansion Continuation (WEC) ##############
+    openmdao_object.add('fp20', IndepVarComp('model_params:WECRelaxationFactor', val=1.0, pass_by_obj=True,
+                                             desc='relaxation factor as defined in Thomas 2018. doi:10.1088/1742-6596/1037/4/042012'), promotes=['*'])
+
 
 class FLORISParameters(Component):
     """Container of FLORIS wake model parameters"""
@@ -242,6 +246,10 @@ class FLORISParameters(Component):
         # ##################   other   ##################
         self.add_output('floris_params:FLORISoriginal', False, pass_by_obj=True,
                                 desc='override all parameters and use FLORIS as original in first Wind Energy paper')
+
+        # ###############    Wake Expansion Continuation (WEC) ##############
+        self.add_output('floris_params:WECRelaxationFactor', val=1.0, pass_by_obj=True,
+                         desc='relaxation factor as defined in Thomas 2018. doi:10.1088/1742-6596/1037/4/042012')
 
     def solve_nonlinear(self, params, unknowns, resids):
 
