@@ -191,6 +191,8 @@ class FLORISParameters(Component):
         self.add_param('model_params:shearExp', 0.15, pass_by_obj=True, desc='wind shear exponent')
         self.add_param('model_params:z_ref', 90., units='m', pass_by_obj=True, desc='height at which wind_speed is measured')
         self.add_param('model_params:z0', 0., units='m', pass_by_obj=True, desc='ground height')
+        # ###############    Wake Expansion Continuation (WEC) ##############
+        self.add_param('model_params:WECRelaxationFactor', val=1.0, pass_by_obj=True, desc='relaxation factor as defined in Thomas 2018. doi:10.1088/1742-6596/1037/4/042012')
 
         # add corresponding unknowns
         self.add_output('floris_params:kd', 0.15 if not use_rotor_components else 0.17, pass_by_obj=True,
