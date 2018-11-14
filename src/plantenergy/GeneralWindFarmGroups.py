@@ -165,7 +165,7 @@ class AEPGroup(Group):
                                                    pass_by_obj=True), promotes=['*'])
             self.add('dv14', IndepVarComp('rated_wind_speed', val=np.zeros(nTurbines), units='m/s',
                                                    pass_by_obj=True), promotes=['*'])
-            self.add('dv15', IndepVarComp('use_power_curve_definition', val=True,
+            self.add('dv15', IndepVarComp('use_power_curve_definition', val=False,
                                                    pass_by_obj=True), promotes=['*'])
 
         self.add('dv16', IndepVarComp('cp_curve_cp', np.zeros(datasize),

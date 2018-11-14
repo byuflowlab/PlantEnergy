@@ -68,8 +68,8 @@ class test_floris(unittest.TestCase):
         # prob = Problem(root=AEPGroup(nTurbines, nDirections, wake_model=floris_wrapper, wake_model_options=model_options,
         #                              params_IdepVar_func=add_floris_params_IndepVarComps,
         #                              params_IndepVar_args={'use_rotor_components': False}))
-
-        prob = Problem(root=AEPGroup(nTurbines, differentiable=True, use_rotor_components=False, wake_model=floris_wrapper,
+        from plantenergy.OptimizationGroups import OptAEP
+        prob = Problem(root=OptAEP(nTurbines, differentiable=True, use_rotor_components=False, wake_model=floris_wrapper,
                                      params_IdepVar_func=add_floris_params_IndepVarComps,
                                      wake_model_options=model_options))
 
@@ -97,7 +97,7 @@ class test_floris(unittest.TestCase):
 
         # run the problem
         prob.run()
-
+        print(prob['wtVelocity0'])
         self.prob = prob
 
     def testImport(self):

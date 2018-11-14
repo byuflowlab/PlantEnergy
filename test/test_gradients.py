@@ -58,8 +58,17 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
         # set up problem
         # prob = Problem(root=OptAEP(nTurbines, nDirections=1))
 
+        model_options = {'differentiable': True,
+                         'use_rotor_components': False,
+                         'nSamples': 0,
+                         'verbose': False,
+                         'use_ct_curve': False,
+                         'ct_curve': None,
+                         'interp_type': 1,
+                         'nRotorPoints': 1}
+
         prob = Problem(root=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=nVertices,
-                                          minSpacing=minSpacing, use_rotor_components=False))
+                                          minSpacing=minSpacing, use_rotor_components=False, wake_model_options=model_options))
 
         # set up optimizer
         # prob.driver = pyOptSparseDriver()
@@ -113,6 +122,7 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
         self.nDirections = nDirections
 
         # print(self.J)
+        print(prob['wtVelocity0'])
 
     def testObj(self):
 
