@@ -28,6 +28,7 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
 
         turbineX = np.random.rand(nTurbines)*3000.
         turbineY = np.random.rand(nTurbines)*3000.
+        hubHeight = np.ones_like(turbineY)*90.
 
         # generate boundary constraint
         locations = np.zeros([nTurbines, 2])
@@ -98,6 +99,7 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
         # assign values to constant inputs (not design variables)
         prob['turbineX'] = turbineX
         prob['turbineY'] = turbineY
+        prob['hubHeight'] = hubHeight
         prob['yaw0'] = yaw
         prob['rotorDiameter'] = rotorDiameter
         prob['axialInduction'] = axialInduction
@@ -109,6 +111,7 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
         prob['windDirections'] = windDirections
         prob['windFrequencies'] = windFrequencies
         prob['model_params:FLORISoriginal'] = True
+        prob['model_params:wec_factor'] = 1.
 
         # provide values for hull constraint
         prob['boundaryVertices'] = boundaryVertices

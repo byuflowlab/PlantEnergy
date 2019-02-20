@@ -150,9 +150,13 @@ class test_jensen(unittest.TestCase):
         # set up problem
 
         wake_model_options = None
-        prob = Problem(root=AEPGroup(nTurbines, nDirections, wake_model=jensen_wrapper, wake_model_options=wake_model_options,
-                                     params_IdepVar_func=add_jensen_params_IndepVarComps,
-                                     params_IndepVar_args={'use_angle': False}))
+        # prob = Problem(root=AEPGroup(nTurbines, nDirections, wake_model=jensen_wrapper, wake_model_options=wake_model_options,
+        #                              params_IdepVar_func=add_jensen_params_IndepVarComps,
+        #                              params_IndepVar_args={'use_angle': False}))
+        prob = Problem(
+            root=AEPGroup(nTurbines, nDirections, wake_model=jensen_wrapper, wake_model_options=wake_model_options,
+                          params_IdepVar_func=add_jensen_params_IndepVarComps,
+                          params_IndepVar_args={'use_angle': False}))
 
         # initialize problem
         prob.setup(check=True)
@@ -185,6 +189,10 @@ class test_jensen(unittest.TestCase):
 
     def testRun(self):
         np.testing.assert_allclose(self.prob['wtVelocity0'],  np.array([8.1, 8.1, 6.74484, 6.74484, 6.616713, 6.616713]))
+
+    def testPower(self):
+        np.testing.assert_allclose(self.prob['wtPower0'], np.array([1791.08942 , 1791.08942 , 1034.134939, 1034.134939,  976.313113,
+        976.313113]))
 
 class test_guass(unittest.TestCase):
 

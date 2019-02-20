@@ -41,7 +41,7 @@ def add_gauss_params_IndepVarComps(openmdao_object, nRotorPoints=1):
     openmdao_object.add('bp16', IndepVarComp('model_params:shear_exp', val=0.15, pass_by_object=True,
                    desc='wind shear calculation exponent'), promotes=['*'])
 
-    openmdao_object.add('bp17', IndepVarComp('model_params:opt_exp_fac', val=1.0, pass_by_object=True,
+    openmdao_object.add('bp17', IndepVarComp('model_params:wec_factor', val=1.0, pass_by_object=True,
                    desc='opt_exp_fac'), promotes=['*'])
     openmdao_object.add('bp18', IndepVarComp('model_params:print_ti', val=False, pass_by_object=True,
                                              desc='print TI values to a file for use in plotting etc'), promotes=['*'])
