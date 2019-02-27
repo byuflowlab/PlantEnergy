@@ -18,6 +18,9 @@ def add_jensen_params_IndepVarComps(openmdao_object, use_angle=False):
                                                 desc='wake spreading angle in degrees. angle for one side of wake)'),
                             promotes=['*'])
 
+    openmdao_object.add('bp17', IndepVarComp('model_params:wec_factor', val=1.0, pass_by_object=True,
+                   desc='wec_factor'), promotes=['*'])
+
 
 class jensen_wrapper(Group):
     #Group with all the components for the Jensen model
