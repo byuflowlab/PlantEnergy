@@ -50,6 +50,9 @@ def add_gauss_params_IndepVarComps(openmdao_object, nRotorPoints=1):
     openmdao_object.add('bp20', IndepVarComp('model_params:sm_smoothing', val=700.0, pass_by_object=True,
                                              desc='adjust degree of smoothing for TI smooth max'), promotes=['*'])
 
+    openmdao_object.add('bp21', IndepVarComp('model_params:exp_rate_multiplier', val=1.0, pass_by_object=True,
+                                             desc='adjust spreading angle of the wake'), promotes=['*'])
+
     # openmdao_object.add('bp8', IndepVarComp('model_params:yaw_mode', val='bastankhah', pass_by_object=True))
     # openmdao_object.add('bp9', IndepVarComp('model_params:spread_mode', val='bastankhah', pass_by_object=True))
 
