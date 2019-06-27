@@ -684,13 +684,12 @@ class SpacingComp(om.ExplicitComponent):
         # Derivatives
         self.declare_partials(of='*', wrt='*')
 
-
     def compute(self, inputs, outputs):
         nTurbines = self.options['nTurbines']
 
         turbineX = inputs['turbineX']
         turbineY = inputs['turbineY']
-        separation_squared = np.zeros(int((nTurbines-1)*nTurbines/2))
+        separation_squared = np.zeros(int((nTurbines-1)*nTurbines/2), dtype=inputs._data.dtype)
 
         k = 0
         for i in range(0, nTurbines):
@@ -700,7 +699,7 @@ class SpacingComp(om.ExplicitComponent):
 
         outputs['wtSeparationSquared'] = separation_squared
 
-    def compute_partials(self, inputs, partials, discrete_inputs=None):
+    def compute_partials(self, inputs, partials):
         nTurbines = self.options['nTurbines']
 
         # obtain necessary inputs
@@ -708,7 +707,7 @@ class SpacingComp(om.ExplicitComponent):
         turbineY = inputs['turbineY']
 
         # initialize gradient calculation array
-        dS = np.zeros((int((nTurbines-1.)*nTurbines/2.), 2*nTurbines))
+        dS = np.zeros((int((nTurbines-1.)*nTurbines/2.), 2*nTurbines), dtype=inputs._data.dtype)
 
         # set turbine pair counter to zero
         k = 0
@@ -732,124 +731,125 @@ class SpacingComp(om.ExplicitComponent):
         partials['wtSeparationSquared', 'turbineY'] = dS[:, nTurbines:]
 
 
-#class BoundaryComp(Component):
+class BoundaryComp(om.ExplicitComponent):
 
-    #def __init__(self, nTurbines, nVertices):
+    def initialize(self):
+        """
+        Declare options.
+        """
+        self.options.declare('nTurbines', types=int, default=0,
+                             desc="Number of wind turbines.")
+        self.options.declare('nVertices', types=int, default=0,
+                             desc="Number of vertices.")
 
-        #super(BoundaryComp, self).__init__()
+    def setup(self):
+        opt = self.options
+        nTurbines = opt['nTurbines']
+        nVertices = opt['nVertices']
 
-        #self.nTurbines = nTurbines
-        #self.nVertices = nVertices
-        #if nVertices > 1:
-            #self.type = type = 'polygon'
-        #elif nVertices == 1:
-            #self.type = type = 'circle'
-        #else:
-            #ValueError('nVertices in BoundaryComp must be greater than 0')
+        if nVertices > 1:
+            self.type = poly_type = 'polygon'
+        elif nVertices == 1:
+            self.type = poly_type = 'circle'
+        else:
+            ValueError('nVertices in BoundaryComp must be greater than 0')
 
-        #if type == 'polygon':
-            ##     Explicitly size input arrays
-            #self.add_param('boundaryVertices', np.zeros([nVertices, 2]), units='m', pass_by_obj=True,
-                           #desc="vertices of the convex hull CCW in order s.t. boundaryVertices[i] -> first point of face"
-                                #"for unit_normals[i]")
-            #self.add_param('boundaryNormals', np.zeros([nVertices, 2]), pass_by_obj=True,
-                           #desc="unit normal vector for each boundary face CCW where boundaryVertices[i] is "
-                                #"the first point of the corresponding face")
-        #elif type == 'circle':
-            #self.add_param('boundary_radius', val=1000., units='m', pass_by_obj=True, desc='radius of wind farm boundary')
-            #self.add_param('boundary_center', val=np.array([0., 0.]), units='m', pass_by_obj=True,
-                           #desc='x and y positions of circular wind farm boundary center')
-        #else:
-            #ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
-                        #%(type))
+        if poly_type == 'polygon':
+            #     Explicitly size input arrays
+            self.add_discrete_input('boundaryVertices', np.zeros([nVertices, 2]),
+                                    desc="vertices of the convex hull CCW in order s.t. boundaryVertices[i] -> first point of face"
+                                    "for unit_normals[i] (m)")
+            self.add_discrete_input('boundaryNormals', np.zeros([nVertices, 2]),
+                                    desc="unit normal vector for each boundary face CCW where boundaryVertices[i] is "
+                                    "the first point of the corresponding face")
+        else:
+            self.add_discrete_input('boundary_radius', val=1000., desc='radius of wind farm boundary (m)')
+            self.add_discrete_input('boundary_center', val=np.array([0., 0.]),
+                                    desc='x and y positions of circular wind farm boundary center (m)')
 
-        #self.add_param('turbineX', np.zeros(nTurbines), units='m',
-                       #desc='x coordinates of turbines in global ref. frame')
-        #self.add_param('turbineY', np.zeros(nTurbines), units='m',
-                       #desc='y coordinates of turbines in global ref. frame')
+        self.add_input('turbineX', np.zeros(nTurbines), units='m',
+                       desc='x coordinates of turbines in global ref. frame')
+        self.add_input('turbineY', np.zeros(nTurbines), units='m',
+                       desc='y coordinates of turbines in global ref. frame')
 
-        ## Explicitly size output array
-        ## (vector with positive elements if turbines outside of hull)
-        #self.add_output('boundaryDistances', np.zeros([nTurbines, nVertices]),
-                        #desc="signed perpendicular distance from each turbine to each face CCW; + is inside")
+        # Explicitly size output array
+        # (vector with positive elements if turbines outside of hull)
+        self.add_output('boundaryDistances', np.zeros([nTurbines, nVertices]),
+                        desc="signed perpendicular distance from each turbine to each face CCW; + is inside")
 
-    #def solve_nonlinear(self, params, unknowns, resids):
+        # Derivatives
+        if poly_type == 'polygon':
+            self.declare_partials(of='*', wrt='*')
+        else:
+            row_col = np.arange(nTurbines)
+            self.declare_partials(of='*', wrt='*', rows=row_col, cols=row_col)
 
-        #turbineX = params['turbineX']
-        #turbineY = params['turbineY']
+    def compute(self, inputs, outputs, discrete_inputs=None, discrete_outputs=None):
+        nTurbines = self.options['nTurbines']
 
-        #if self.type == 'polygon':
-            ## put locations in correct arrangement for calculations
-            #locations = np.zeros([self.nTurbines, 2])
-            #for i in range(0, self.nTurbines):
-                #locations[i] = np.array([turbineX[i], turbineY[i]])
+        turbineX = inputs['turbineX']
+        turbineY = inputs['turbineY']
 
-            ## print("in comp, locs are: ".format(locations))
+        if self.type == 'polygon':
+            # put locations in correct arrangement for calculations
+            locations = np.zeros([nTurbines, 2], dtype=inputs._data.dtype)
+            for i in range(0, nTurbines):
+                locations[i] = np.array([turbineX[i], turbineY[i]], dtype=inputs._data.dtype)
 
-            ## calculate distance from each point to each face
-            #unknowns['boundaryDistances'] = calculate_distance(locations,
-                                                               #params['boundaryVertices'], params['boundaryNormals'])
+            # print("in comp, locs are: ".format(locations))
 
-        #elif self.type == 'circle':
-            #xc = params['boundary_center'][0]
-            #yc = params['boundary_center'][1]
-            #r = params['boundary_radius']
-            #unknowns['boundaryDistances'] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
+            # calculate distance from each point to each face
+            outputs['boundaryDistances'] = calculate_distance(locations,
+                                                              discrete_inputs['boundaryVertices'],
+                                                              discrete_inputs['boundaryNormals'],
+                                                              dtype=inputs._data.dtype)
 
-        #else:
-            #ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
-                        #%(type))
+        else:
+            xc = discrete_inputs['boundary_center'][0]
+            yc = discrete_inputs['boundary_center'][1]
+            r = discrete_inputs['boundary_radius']
+            outputs['boundaryDistances'][:, 0] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
 
-    #def linearize(self, params, unknowns, resids):
+    def compute_partials(self, inputs, partials, discrete_inputs=None):
+        opt = self.options
+        nTurbines = opt['nTurbines']
+        nVertices = opt['nVertices']
 
-        #if self.type == 'polygon':
-            #unit_normals = params['boundaryNormals']
+        if self.type == 'polygon':
+            unit_normals = discrete_inputs['boundaryNormals']
 
-            ## initialize array to hold distances from each point to each face
-            #dfaceDistance_dx = np.zeros([int(self.nTurbines*self.nVertices), self.nTurbines])
-            #dfaceDistance_dy = np.zeros([int(self.nTurbines*self.nVertices), self.nTurbines])
+            # initialize array to hold distances from each point to each face
+            dfaceDistance_dx = np.zeros([int(nTurbines*nVertices), nTurbines], dtype=inputs._data.dtype)
+            dfaceDistance_dy = np.zeros([int(nTurbines*nVertices), nTurbines], dtype=inputs._data.dtype)
 
-            #for i in range(0, self.nTurbines):
-                ## determine if point is inside or outside of each face, and distance from each face
-                #for j in range(0, self.nVertices):
+            for i in range(0, nTurbines):
+                # determine if point is inside or outside of each face, and distance from each face
+                for j in range(0, nVertices):
 
-                    ## define the derivative vectors from the point of interest to the first point of the face
-                    #dpa_dx = np.array([-1.0, 0.0])
-                    #dpa_dy = np.array([0.0, -1.0])
+                    # define the derivative vectors from the point of interest to the first point of the face
+                    dpa_dx = np.array([-1.0, 0.0], dtype=inputs._data.dtype)
+                    dpa_dy = np.array([0.0, -1.0], dtype=inputs._data.dtype)
 
-                    ## find perpendicular distance derivatives from point to current surface (vector projection)
-                    #ddistanceVec_dx = np.vdot(dpa_dx, unit_normals[j])*unit_normals[j]
-                    #ddistanceVec_dy = np.vdot(dpa_dy, unit_normals[j])*unit_normals[j]
+                    # find perpendicular distance derivatives from point to current surface (vector projection)
+                    ddistanceVec_dx = np.vdot(dpa_dx, unit_normals[j])*unit_normals[j]
+                    ddistanceVec_dy = np.vdot(dpa_dy, unit_normals[j])*unit_normals[j]
 
-                    ## calculate derivatives for the sign of perpendicular distance from point to current face
-                    #dfaceDistance_dx[i*self.nVertices+j, i] = np.vdot(ddistanceVec_dx, unit_normals[j])
-                    #dfaceDistance_dy[i*self.nVertices+j, i] = np.vdot(ddistanceVec_dy, unit_normals[j])
+                    # calculate derivatives for the sign of perpendicular distance from point to current face
+                    dfaceDistance_dx[i*nVertices+j, i] = np.vdot(ddistanceVec_dx, unit_normals[j])
+                    dfaceDistance_dy[i*nVertices+j, i] = np.vdot(ddistanceVec_dy, unit_normals[j])
 
-        #elif self.type == 'circle':
-            #turbineX = params['turbineX']
-            #turbineY = params['turbineY']
-            #xc = params['boundary_center'][0]
-            #yc = params['boundary_center'][1]
+        else:
+            turbineX = inputs['turbineX']
+            turbineY = inputs['turbineY']
+            xc = discrete_inputs['boundary_center'][0]
+            yc = discrete_inputs['boundary_center'][1]
 
-            #A = np.eye(self.nTurbines, self.nTurbines)
-            #B =  - 2. * (turbineX - xc)
-            #C =  - 2. * (turbineY - yc)
+            dfaceDistance_dx = - 2. * (turbineX - xc)
+            dfaceDistance_dy = - 2. * (turbineY - yc)
 
-            #dfaceDistance_dx = A*B
-            #dfaceDistance_dy = A*C
-        #else:
-            #ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
-                       #% (type))
-
-
-        ## initialize Jacobian dict
-        #J = {}
-
-        ## return Jacobian dict
-        #J['boundaryDistances', 'turbineX'] = dfaceDistance_dx
-        #J['boundaryDistances', 'turbineY'] = dfaceDistance_dy
-
-        #return J
+        # return Jacobian dict
+        partials['boundaryDistances', 'turbineX'] = dfaceDistance_dx
+        partials['boundaryDistances', 'turbineY'] = dfaceDistance_dy
 
 
 def calculate_boundary(vertices):
@@ -882,7 +882,7 @@ def calculate_boundary(vertices):
     return vertices, unit_normals
 
 
-def calculate_distance(points, vertices, unit_normals, return_bool=False):
+def calculate_distance(points, vertices, unit_normals, return_bool=False, dtype=None):
 
     """
     :param points: points that you want to calculate the distance from to the faces of the convex hull
@@ -891,6 +891,7 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False):
     :param unit_normals: unit normal vector for each face CCW where vertices[i] is first point of face
     :param return_bool: set to True to return an array of bools where True means the corresponding point
            is inside the hull
+    :param dtype: Numpy dtype for new arrays
     :return face_distace: signed perpendicular distance from each point to each face; + is inside
     :return [inside]: (optional) an array of zeros and ones where 1.0 means the corresponding point is inside the hull
     """
@@ -901,7 +902,7 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False):
     nVertices = vertices.shape[0]
 
     # initialize array to hold distances from each point to each face
-    face_distance = np.zeros([nPoints, nVertices])
+    face_distance = np.zeros([nPoints, nVertices], dtype=dtype)
 
     if not return_bool:
         # loop through points and find distance to each face
@@ -911,7 +912,7 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False):
             for j in range(0, nVertices):
 
                 # define the vector from the point of interest to the first point of the face
-                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]])
+                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]], dtype=dtype)
 
                 # find perpendicular distance from point to current surface (vector projection)
                 d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
@@ -932,7 +933,7 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False):
             for j in range(0, nVertices):
 
                 # define the vector from the point of interest to the first point of the face
-                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]])
+                pa = np.array([vertices[j, 0]-points[i, 0], vertices[j, 1]-points[i, 1]], dtype=dtype)
 
                 # find perpendicular distance from point to current surface (vector projection)
                 d_vec = np.vdot(pa, unit_normals[j])*unit_normals[j]
@@ -947,145 +948,50 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False):
         return face_distance, inside
 
 
-#class MUX(Component):
-    #""" Connect input elements into a single array  """
-
-    #def __init__(self, nElements, units=None):
-
-        #super(MUX, self).__init__()
-
-        ## set finite difference options (fd used for testing only)
-        #self.deriv_options['check_form'] = 'central'
-        #self.deriv_options['check_step_size'] = 1.0e-5
-        #self.deriv_options['check_step_calc'] = 'relative'
-
-        ## define necessary class attributes
-        #self.nElements = nElements
-
-        ## define inputs
-        #if units is None:
-            #for i in range(0, nElements):
-                #self.add_param('input%i' % i, val=0.0, desc='scalar input')
-        #else:
-            #for i in range(0, nElements):
-                #self.add_param('input%i' % i, val=0.0, units=units, desc='scalar input')
-
-        ## define output array
-        #if units is None:
-            #self.add_output('Array', np.zeros(nElements), desc='ndArray of all the scalar inputs')
-        #else:
-            #self.add_output('Array', np.zeros(nElements), units=units, desc='ndArray of all the scalar inputs')
-
-    #def solve_nonlinear(self, params, unknowns, resids):
-
-        ## assign input values to elements of the output array
-        #for i in range(0, self.nElements):
-            #exec("unknowns['Array'][%i] = params['input%i']" % (i, i))
-
-    #def linearize(self, params, unknowns, resids):
-
-        ## initialize gradient calculation array
-        #dArray_dInput = np.zeros(self.nElements)
-
-        ## initialize Jacobian dict
-        #J = {}
-
-        ## calculate gradient and populate Jacobian dict
-        #for i in range(0, self.nElements):
-            #dArray_dInput[i] = 1.0
-            #J['Array', 'input%i' % i] = np.array(dArray_dInput)
-            #dArray_dInput[i] = 0.0
-
-        #return J
-
-
-#class DeMUX(Component):
-    #""" split a given array into separate elements """
-
-    #def __init__(self, nElements, units=None):
-
-        #super(DeMUX, self).__init__()
-
-        ## set finite difference options (fd used for testing only)
-        #self.deriv_options['check_form'] = 'central'
-        #self.deriv_options['check_step_size'] = 1.0e-5
-        #self.deriv_options['check_step_calc'] = 'relative'
-
-        ## initialize necessary class attributes
-        #self.nElements = nElements
-
-        ## define input
-        #if units is None:
-            #self.add_param('Array', np.zeros(nElements), desc='ndArray of scalars')
-        #else:
-            #self.add_param('Array', np.zeros(nElements), units=units, desc='ndArray of scalars')
-
-        ## define outputs
-        #if units is None:
-            #for i in range(0, nElements):
-                #self.add_output('output%i' % i, val=0.0, desc='scalar output')
-        #else:
-            #for i in range(0, nElements):
-                #self.add_output('output%i' % i, val=0.0, units=units, desc='scalar output')
-
-    #def solve_nonlinear(self, params, unknowns, resids):
-
-        ## assign elements of the input array to outputs
-        #for i in range(0, self.nElements):
-            #exec("unknowns['output%i'] = params['Array'][%i]" % (i, i))
-
-    #def linearize(self, params, unknowns, resids):
-
-        ## initialize gradient calculation array
-        #doutput_dArray = np.eye(self.nElements)
-
-        ## intialize Jacobian dict
-        #J = {}
-
-        ## calculate the gradients and populate the Jacobian dict
-        #for i in range(0, self.nElements):
-            #J['output%i' % i, 'Array'] = np.reshape(doutput_dArray[i, :], (1, self.nElements))
-
-        #return J
-
-
 ## ---- if you know wind speed to power and thrust, you can use these tools ----------------
-#class CPCT_Interpolate_Gradients(Component):
+#class CPCT_Interpolate_Gradients(om.ExplicitComponent):
 
-    #def __init__(self, nTurbines, direction_id=0, datasize=0):
+    #def initialize(self):
+        #"""
+        #Declare options.
+        #"""
+        #self.options.declare('nTurbines', types=int, default=0,
+                             #desc="Number of wind turbines.")
+        #self.options.declare('direction_id', types=int, default=0,
+                             #desc="Direction index.")
+        #self.options.declare('datasize', types=int, default=0,
+                             #desc="Dimension of the coefficient arrays.")
 
-        #super(CPCT_Interpolate_Gradients, self).__init__()
-
-        ## set finite difference options (fd used for testing only)
-        #self.deriv_options['check_form'] = 'central'
-        #self.deriv_options['check_step_size'] = 1.0e-5
-        #self.deriv_options['check_step_calc'] = 'relative'
-
-        ## define class attributes
-        #self.nTurbines = nTurbines
-        #self.direction_id = direction_id
-        #self.datasize = datasize
+    #def setup(self):
+        #opt = self.options
+        #nTurbines = opt['nTurbines']
+        #direction_id = opt['direction_id']
+        #datasize = opt['datasize']
 
         ## add inputs and outputs
-        #self.add_param('yaw%i' % direction_id, np.zeros(nTurbines), desc='yaw error', units='deg')
-        #self.add_param('wtVelocity%i' % direction_id, np.zeros(nTurbines), units='m/s', desc='hub height wind speed') # Uhub
+        #self.add_input('yaw%i' % direction_id, np.zeros(nTurbines), desc='yaw error', units='deg')
+        #self.add_input('wtVelocity%i' % direction_id, np.zeros(nTurbines), units='m/s',
+                       #desc='hub height wind speed') # Uhub
         #self.add_output('Cp_out', np.zeros(nTurbines))
         #self.add_output('Ct_out', np.zeros(nTurbines))
 
         ## add variable trees
-        #self.add_param('gen_params:pP', 1.88, pass_by_obj=True)
-        #self.add_param('gen_params:windSpeedToCPCT_wind_speed', np.zeros(datasize), units='m/s',
-                       #desc='range of wind speeds', pass_by_obj=True)
-        #self.add_param('gen_params:windSpeedToCPCT_CP', np.zeros(datasize), iotype='out',
-                       #desc='power coefficients', pass_by_obj=True)
-        #self.add_param('gen_params:windSpeedToCPCT_CT', np.zeros(datasize), iotype='out',
-                       #desc='thrust coefficients', pass_by_obj=True)
+        #self.add_discrete_input('gen_params:pP', 1.88)
+        #self.add_discrete_input('gen_params:windSpeedToCPCT_wind_speed', np.zeros(datasize),
+                                #desc='range of wind speeds (m/s)')
+        #self.add_discrete_input('gen_params:windSpeedToCPCT_CP', np.zeros(datasize),
+                                #desc='power coefficients')
+        #self.add_discrete_input('gen_params:windSpeedToCPCT_CT', np.zeros(datasize),
+                                #desc='thrust coefficients')
 
-    #def solve_nonlinear(self, params, unknowns, resids):
+        ## Derivatives
+        #self.declare_partials(of='*', wrt='*')
+
+    #def compute(self, inputs, outputs, discrete_inputs=None, discrete_outputs=None):
+        #direction_id = self.options['direction_id']
 
         ## obtain necessary inputs
-        #direction_id = self.direction_id
-        #pP = self.params['gen_params:pP']
+        #pP = discrete_inputs['gen_params:pP']
 
         #wind_speed_ax = np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**(pP/3.0)*self.params['wtVelocity%i' % direction_id]
         ## use interpolation on precalculated CP-CT curve
@@ -1097,8 +1003,8 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False):
         ## for i in range(0, len(self.unknowns['Ct_out'])):
         ##     self.unknowns['Ct_out'] = max(max(self.unknowns['Ct_out']), self.unknowns['Ct_out'][i])
         ## normalize on incoming wind speed to correct coefficients for yaw
-        #self.unknowns['Cp_out'] = self.unknowns['Cp_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**pP
-        #self.unknowns['Ct_out'] = self.unknowns['Ct_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**2
+        #outputs['Cp_out'] = self.unknowns['Cp_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**pP
+        #outputs['Ct_out'] = self.unknowns['Ct_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**2
 
     #def linearize(self, params, unknowns, resids):  # standard central differencing
         ## set step size for finite differencing
@@ -1159,102 +1065,111 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False):
         #return J
 
 
-#class CPCT_Interpolate_Gradients_Smooth(Component):
+class CPCT_Interpolate_Gradients_Smooth(om.ExplicitComponent):
 
-    #def __init__(self, nTurbines, direction_id=0, datasize=0):
+    def initialize(self):
+        """
+        Declare options.
+        """
+        self.options.declare('nTurbines', types=int, default=0,
+                             desc="Number of wind turbines.")
+        self.options.declare('direction_id', types=int, default=0,
+                             desc="Direction index.")
+        self.options.declare('datasize', types=int, default=0,
+                             desc="Dimension of the coefficient arrays.")
 
-        #super(CPCT_Interpolate_Gradients_Smooth, self).__init__()
+    def setup(self):
+        opt = self.options
+        nTurbines = opt['nTurbines']
+        direction_id = opt['direction_id']
+        datasize = opt['datasize']
 
-        ## set finite difference options (fd used for testing only)
-        #self.deriv_options['check_form'] = 'central'
-        #self.deriv_options['check_step_size'] = 1.0e-6
-        #self.deriv_options['check_step_calc'] = 'relative'
+        # define class attributes
+        self.nTurbines = nTurbines
+        self.direction_id = direction_id
+        self.datasize = datasize
 
-        ## define class attributes
-        #self.nTurbines = nTurbines
-        #self.direction_id = direction_id
-        #self.datasize = datasize
+        # add inputs and outputs
+        self.add_input('yaw%i' % direction_id, np.zeros(nTurbines), desc='yaw error', units='deg')
+        self.add_input('wtVelocity%i' % direction_id, np.zeros(nTurbines), units='m/s',
+                       desc='hub height wind speed') # Uhub
+        self.add_output('Cp_out', np.zeros(nTurbines))
+        self.add_output('Ct_out', np.zeros(nTurbines))
 
-        ## add inputs and outputs
-        #self.add_param('yaw%i' % direction_id, np.zeros(nTurbines), desc='yaw error', units='deg')
-        #self.add_param('wtVelocity%i' % direction_id, np.zeros(nTurbines), units='m/s', desc='hub height wind speed') # Uhub
-        #self.add_output('Cp_out', np.zeros(nTurbines))
-        #self.add_output('Ct_out', np.zeros(nTurbines))
+        # add variable trees
+        self.add_discrete_input('gen_params:pP', 3.0)
+        self.add_discrete_input('gen_params:windSpeedToCPCT_wind_speed', np.zeros(datasize),
+                                desc='range of wind speeds (m/s)')
+        self.add_discrete_input('gen_params:windSpeedToCPCT_CP', np.zeros(datasize),
+                                desc='power coefficients')
+        self.add_discrete_input('gen_params:windSpeedToCPCT_CT', np.zeros(datasize),
+                                desc='thrust coefficients')
 
-        ## add variable trees
-        #self.add_param('gen_params:pP', 3.0, pass_by_obj=True)
-        #self.add_param('gen_params:windSpeedToCPCT_wind_speed', np.zeros(datasize), units='m/s',
-                       #desc='range of wind speeds', pass_by_obj=True)
-        #self.add_param('gen_params:windSpeedToCPCT_CP', np.zeros(datasize),
-                       #desc='power coefficients', pass_by_obj=True)
-        #self.add_param('gen_params:windSpeedToCPCT_CT', np.zeros(datasize),
-                       #desc='thrust coefficients', pass_by_obj=True)
+    def solve_nonlinear(self, params, unknowns, resids):
+        direction_id = self.direction_id
+        pP = self.params['gen_params:pP']
+        yaw = self.params['yaw%i' % direction_id]
+        start = 5
+        skip = 8
+        # Cp = params['gen_params:windSpeedToCPCT_CP'][start::skip]
+        Cp = params['gen_params:windSpeedToCPCT_CP']
+        # Ct = params['gen_params:windSpeedToCPCT_CT'][start::skip]
+        Ct = params['gen_params:windSpeedToCPCT_CT']
+        # windspeeds = params['gen_params:windSpeedToCPCT_wind_speed'][start::skip]
+        windspeeds = params['gen_params:windSpeedToCPCT_wind_speed']
+        #
+        # Cp = np.insert(Cp, 0, Cp[0]/2.0)
+        # Cp = np.insert(Cp, 0, 0.0)
+        # Ct = np.insert(Ct, 0, np.max(params['gen_params:windSpeedToCPCT_CP'])*0.99)
+        # Ct = np.insert(Ct, 0, np.max(params['gen_params:windSpeedToCPCT_CT']))
+        # windspeeds = np.insert(windspeeds, 0, 2.5)
+        # windspeeds = np.insert(windspeeds, 0, 0.0)
+        #
+        # Cp = np.append(Cp, 0.0)
+        # Ct = np.append(Ct, 0.0)
+        # windspeeds = np.append(windspeeds, 30.0)
 
-    #def solve_nonlinear(self, params, unknowns, resids):
-        #direction_id = self.direction_id
-        #pP = self.params['gen_params:pP']
-        #yaw = self.params['yaw%i' % direction_id]
-        #start = 5
-        #skip = 8
-        ## Cp = params['gen_params:windSpeedToCPCT_CP'][start::skip]
-        #Cp = params['gen_params:windSpeedToCPCT_CP']
-        ## Ct = params['gen_params:windSpeedToCPCT_CT'][start::skip]
-        #Ct = params['gen_params:windSpeedToCPCT_CT']
-        ## windspeeds = params['gen_params:windSpeedToCPCT_wind_speed'][start::skip]
-        #windspeeds = params['gen_params:windSpeedToCPCT_wind_speed']
-        ##
-        ## Cp = np.insert(Cp, 0, Cp[0]/2.0)
-        ## Cp = np.insert(Cp, 0, 0.0)
-        ## Ct = np.insert(Ct, 0, np.max(params['gen_params:windSpeedToCPCT_CP'])*0.99)
-        ## Ct = np.insert(Ct, 0, np.max(params['gen_params:windSpeedToCPCT_CT']))
-        ## windspeeds = np.insert(windspeeds, 0, 2.5)
-        ## windspeeds = np.insert(windspeeds, 0, 0.0)
-        ##
-        ## Cp = np.append(Cp, 0.0)
-        ## Ct = np.append(Ct, 0.0)
-        ## windspeeds = np.append(windspeeds, 30.0)
+        CPspline = Akima(windspeeds, Cp)
+        CTspline = Akima(windspeeds, Ct)
 
-        #CPspline = Akima(windspeeds, Cp)
-        #CTspline = Akima(windspeeds, Ct)
+        # n = 500
+        # x = np.linspace(0.0, 30., n)
+        CP, dCPdvel, _, _ = CPspline.interp(params['wtVelocity%i' % direction_id])
+        CT, dCTdvel, _, _ = CTspline.interp(params['wtVelocity%i' % direction_id])
 
-        ## n = 500
-        ## x = np.linspace(0.0, 30., n)
-        #CP, dCPdvel, _, _ = CPspline.interp(params['wtVelocity%i' % direction_id])
-        #CT, dCTdvel, _, _ = CTspline.interp(params['wtVelocity%i' % direction_id])
+        # print('in solve_nonlinear', dCPdvel, dCTdvel)
+        # pP = 3.0
+        # print("in rotor, pP = ", pP)
+        Cp_out = CP*np.cos(yaw*np.pi/180.)**pP
+        Ct_out = CT*np.cos(yaw*np.pi/180.)**2.
 
-        ## print('in solve_nonlinear', dCPdvel, dCTdvel)
-        ## pP = 3.0
-        ## print("in rotor, pP = ", pP)
-        #Cp_out = CP*np.cos(yaw*np.pi/180.)**pP
-        #Ct_out = CT*np.cos(yaw*np.pi/180.)**2.
+        # print("in rotor, Cp = [%f. %f], Ct = [%f, %f]".format(Cp_out[0], Cp_out[1], Ct_out[0], Ct_out[1]))
 
-        ## print("in rotor, Cp = [%f. %f], Ct = [%f, %f]".format(Cp_out[0], Cp_out[1], Ct_out[0], Ct_out[1]))
+        self.dCp_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*pP*CP*np.cos(yaw*np.pi/180.)**(pP-1.)
+        self.dCp_out_dvel = dCPdvel*np.cos(yaw*np.pi/180.)**pP
 
-        #self.dCp_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*pP*CP*np.cos(yaw*np.pi/180.)**(pP-1.)
-        #self.dCp_out_dvel = dCPdvel*np.cos(yaw*np.pi/180.)**pP
+        # print('in solve_nonlinear', self.dCp_out_dyaw, self.dCp_out_dvel)
 
-        ## print('in solve_nonlinear', self.dCp_out_dyaw, self.dCp_out_dvel)
+        self.dCt_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*2.*CT*np.cos(yaw*np.pi/180.)
+        self.dCt_out_dvel = dCTdvel*np.cos(yaw*np.pi/180.)**2.
 
-        #self.dCt_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*2.*CT*np.cos(yaw*np.pi/180.)
-        #self.dCt_out_dvel = dCTdvel*np.cos(yaw*np.pi/180.)**2.
+        # normalize on incoming wind speed to correct coefficients for yaw
+        self.unknowns['Cp_out'] = Cp_out
+        self.unknowns['Ct_out'] = Ct_out
 
-        ## normalize on incoming wind speed to correct coefficients for yaw
-        #self.unknowns['Cp_out'] = Cp_out
-        #self.unknowns['Ct_out'] = Ct_out
+    def linearize(self, params, unknowns, resids):  # standard central differencing
 
-    #def linearize(self, params, unknowns, resids):  # standard central differencing
+        # obtain necessary inputs
+        direction_id = self.direction_id
 
-        ## obtain necessary inputs
-        #direction_id = self.direction_id
+        # compile Jacobian dict
+        J = {}
+        J['Cp_out', 'yaw%i' % direction_id] = np.eye(self.nTurbines)*self.dCp_out_dyaw
+        J['Cp_out', 'wtVelocity%i' % direction_id] = np.eye(self.nTurbines)*self.dCp_out_dvel
+        J['Ct_out', 'yaw%i' % direction_id] = np.eye(self.nTurbines)*self.dCt_out_dyaw
+        J['Ct_out', 'wtVelocity%i' % direction_id] = np.eye(self.nTurbines)*self.dCt_out_dvel
 
-        ## compile Jacobian dict
-        #J = {}
-        #J['Cp_out', 'yaw%i' % direction_id] = np.eye(self.nTurbines)*self.dCp_out_dyaw
-        #J['Cp_out', 'wtVelocity%i' % direction_id] = np.eye(self.nTurbines)*self.dCp_out_dvel
-        #J['Ct_out', 'yaw%i' % direction_id] = np.eye(self.nTurbines)*self.dCt_out_dyaw
-        #J['Ct_out', 'wtVelocity%i' % direction_id] = np.eye(self.nTurbines)*self.dCt_out_dvel
-
-        #return J
+        return J
 
 
 
