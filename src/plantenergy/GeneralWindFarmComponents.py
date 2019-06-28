@@ -14,18 +14,18 @@ from plantenergy.utilities import hermite_spline
 
 
 def add_gen_params_IdepVarComps(openmdao_group, datasize):
-    ivc = IndepVarComp()
+    ivc = om.IndepVarComp()
 
-    ivc.add_discrete_input('gen_params:pP', 1.88)
-    ivc.add_discrete_input('gen_params:windSpeedToCPCT_wind_speed', np.zeros(datasize),
-                           desc='range of wind speeds')
-    ivc.add_discrete_input('gen_params:windSpeedToCPCT_CP', np.zeros(datasize),
-                           desc='power coefficients')
-    ivc.add_discrete_input('gen_params:windSpeedToCPCT_CT', np.zeros(datasize),
-                           desc='thrust coefficients')
-    ivc.add_discrete_input('gen_params:CPcorrected', False)
-    ivc.add_discrete_input('gen_params:CTcorrected', False)
-    ivc.add_discrete_input('gen_params:AEP_method', 'none')
+    ivc.add_discrete_output('gen_params:pP', 1.88)
+    ivc.add_discrete_output('gen_params:windSpeedToCPCT_wind_speed', np.zeros(datasize),
+                            desc='range of wind speeds')
+    ivc.add_discrete_output('gen_params:windSpeedToCPCT_CP', np.zeros(datasize),
+                            desc='power coefficients')
+    ivc.add_discrete_output('gen_params:windSpeedToCPCT_CT', np.zeros(datasize),
+                            desc='thrust coefficients')
+    ivc.add_discrete_output('gen_params:CPcorrected', False)
+    ivc.add_discrete_output('gen_params:CTcorrected', False)
+    ivc.add_discrete_output('gen_params:AEP_method', 'none')
 
     openmdao_group.add_subsystem('gen_params', ivc, promotes_outputs=['*'])
 
@@ -948,6 +948,7 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False, dtype=
         return face_distance, inside
 
 
+# Note, this version performs manual fd. Not converted to openmdao 2.0.
 ## ---- if you know wind speed to power and thrust, you can use these tools ----------------
 #class CPCT_Interpolate_Gradients(om.ExplicitComponent):
 
@@ -992,8 +993,10 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False, dtype=
 
         ## obtain necessary inputs
         #pP = discrete_inputs['gen_params:pP']
+        #yaw = self.params['yaw%i' % direction_id]*np.pi/180.0
+        #cos_yaw = np.cos(yaw)
 
-        #wind_speed_ax = np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**(pP/3.0)*self.params['wtVelocity%i' % direction_id]
+        #wind_speed_ax = np.cos(cos_yaw)**(pP/3.0)*self.params['wtVelocity%i' % direction_id]
         ## use interpolation on precalculated CP-CT curve
         #wind_speed_ax = np.maximum(wind_speed_ax, self.params['gen_params:windSpeedToCPCT_wind_speed'][0])
         #wind_speed_ax = np.minimum(wind_speed_ax, self.params['gen_params:windSpeedToCPCT_wind_speed'][-1])
@@ -1003,8 +1006,8 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False, dtype=
         ## for i in range(0, len(self.unknowns['Ct_out'])):
         ##     self.unknowns['Ct_out'] = max(max(self.unknowns['Ct_out']), self.unknowns['Ct_out'][i])
         ## normalize on incoming wind speed to correct coefficients for yaw
-        #outputs['Cp_out'] = self.unknowns['Cp_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**pP
-        #outputs['Ct_out'] = self.unknowns['Ct_out'] * np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**2
+        #outputs['Cp_out'] = self.unknowns['Cp_out'] * np.cos(cos_yaw)**pP
+        #outputs['Ct_out'] = self.unknowns['Ct_out'] * np.cos(cos_yaw)**2
 
     #def linearize(self, params, unknowns, resids):  # standard central differencing
         ## set step size for finite differencing
@@ -1014,8 +1017,8 @@ def calculate_distance(points, vertices, unit_normals, return_bool=False, dtype=
         ## calculate upper and lower function values
         #wind_speed_ax_high_yaw = np.cos((self.params['yaw%i' % direction_id]+h)*np.pi/180.0)**(self.params['gen_params:pP']/3.0)*self.params['wtVelocity%i' % direction_id]
         #wind_speed_ax_low_yaw = np.cos((self.params['yaw%i' % direction_id]-h)*np.pi/180.0)**(self.params['gen_params:pP']/3.0)*self.params['wtVelocity%i' % direction_id]
-        #wind_speed_ax_high_wind = np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**(self.params['gen_params:pP']/3.0)*(self.params['wtVelocity%i' % direction_id]+h)
-        #wind_speed_ax_low_wind = np.cos(self.params['yaw%i' % direction_id]*np.pi/180.0)**(self.params['gen_params:pP']/3.0)*(self.params['wtVelocity%i' % direction_id]-h)
+        #wind_speed_ax_high_wind = np.cos(cos_yaw)**(self.params['gen_params:pP']/3.0)*(self.params['wtVelocity%i' % direction_id]+h)
+        #wind_speed_ax_low_wind = np.cos(cos_yaw)**(self.params['gen_params:pP']/3.0)*(self.params['wtVelocity%i' % direction_id]-h)
 
         ## use interpolation on precalculated CP-CT curve
         #wind_speed_ax_high_yaw = np.maximum(wind_speed_ax_high_yaw, self.params['gen_params:windSpeedToCPCT_wind_speed'][0])
@@ -1084,11 +1087,6 @@ class CPCT_Interpolate_Gradients_Smooth(om.ExplicitComponent):
         direction_id = opt['direction_id']
         datasize = opt['datasize']
 
-        # define class attributes
-        self.nTurbines = nTurbines
-        self.direction_id = direction_id
-        self.datasize = datasize
-
         # add inputs and outputs
         self.add_input('yaw%i' % direction_id, np.zeros(nTurbines), desc='yaw error', units='deg')
         self.add_input('wtVelocity%i' % direction_id, np.zeros(nTurbines), units='m/s',
@@ -1105,23 +1103,34 @@ class CPCT_Interpolate_Gradients_Smooth(om.ExplicitComponent):
         self.add_discrete_input('gen_params:windSpeedToCPCT_CT', np.zeros(datasize),
                                 desc='thrust coefficients')
 
-    def solve_nonlinear(self, params, unknowns, resids):
-        direction_id = self.direction_id
-        pP = self.params['gen_params:pP']
-        yaw = self.params['yaw%i' % direction_id]
+        # Derivatives
+        row_col = np.arange(nTurbines)
+        self.declare_partials(of='*', wrt='*', rows=row_col, cols=row_col)
+
+        # Can't complex step across Akima
+        self.set_check_partial_options(wrt='*', method='fd')
+
+    def compute(self, inputs, outputs, discrete_inputs=None, discrete_outputs=None):
+        direction_id = self.options['direction_id']
+        pP = discrete_inputs['gen_params:pP']
+
+        wtVelocity = inputs['wtVelocity%i' % direction_id]
+        yaw = inputs['yaw%i' % direction_id] * np.pi / 180.
+        cos_yaw = np.cos(yaw)
+
         start = 5
         skip = 8
-        # Cp = params['gen_params:windSpeedToCPCT_CP'][start::skip]
-        Cp = params['gen_params:windSpeedToCPCT_CP']
-        # Ct = params['gen_params:windSpeedToCPCT_CT'][start::skip]
-        Ct = params['gen_params:windSpeedToCPCT_CT']
-        # windspeeds = params['gen_params:windSpeedToCPCT_wind_speed'][start::skip]
-        windspeeds = params['gen_params:windSpeedToCPCT_wind_speed']
+        # Cp = discrete_inputs['gen_params:windSpeedToCPCT_CP'][start::skip]
+        Cp = discrete_inputs['gen_params:windSpeedToCPCT_CP']
+        # Ct = discrete_inputs['gen_params:windSpeedToCPCT_CT'][start::skip]
+        Ct = discrete_inputs['gen_params:windSpeedToCPCT_CT']
+        # windspeeds = discrete_inputs['gen_params:windSpeedToCPCT_wind_speed'][start::skip]
+        windspeeds = discrete_inputs['gen_params:windSpeedToCPCT_wind_speed']
         #
         # Cp = np.insert(Cp, 0, Cp[0]/2.0)
         # Cp = np.insert(Cp, 0, 0.0)
-        # Ct = np.insert(Ct, 0, np.max(params['gen_params:windSpeedToCPCT_CP'])*0.99)
-        # Ct = np.insert(Ct, 0, np.max(params['gen_params:windSpeedToCPCT_CT']))
+        # Ct = np.insert(Ct, 0, np.max(discrete_inputs['gen_params:windSpeedToCPCT_CP'])*0.99)
+        # Ct = np.insert(Ct, 0, np.max(discrete_inputs['gen_params:windSpeedToCPCT_CT']))
         # windspeeds = np.insert(windspeeds, 0, 2.5)
         # windspeeds = np.insert(windspeeds, 0, 0.0)
         #
@@ -1132,45 +1141,35 @@ class CPCT_Interpolate_Gradients_Smooth(om.ExplicitComponent):
         CPspline = Akima(windspeeds, Cp)
         CTspline = Akima(windspeeds, Ct)
 
-        # n = 500
-        # x = np.linspace(0.0, 30., n)
-        CP, dCPdvel, _, _ = CPspline.interp(params['wtVelocity%i' % direction_id])
-        CT, dCTdvel, _, _ = CTspline.interp(params['wtVelocity%i' % direction_id])
+        CP, dCPdvel, _, _ = CPspline.interp(wtVelocity)
+        CT, dCTdvel, _, _ = CTspline.interp(wtVelocity)
 
         # print('in solve_nonlinear', dCPdvel, dCTdvel)
-        # pP = 3.0
-        # print("in rotor, pP = ", pP)
-        Cp_out = CP*np.cos(yaw*np.pi/180.)**pP
-        Ct_out = CT*np.cos(yaw*np.pi/180.)**2.
+        Cp_out = CP * cos_yaw**pP
+        Ct_out = CT * cos_yaw**2.
 
         # print("in rotor, Cp = [%f. %f], Ct = [%f, %f]".format(Cp_out[0], Cp_out[1], Ct_out[0], Ct_out[1]))
 
-        self.dCp_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*pP*CP*np.cos(yaw*np.pi/180.)**(pP-1.)
-        self.dCp_out_dvel = dCPdvel*np.cos(yaw*np.pi/180.)**pP
+        self.dCp_out_dyaw = (-np.sin(yaw))*(np.pi/180.)*pP*CP*cos_yaw**(pP-1.)
+        self.dCp_out_dvel = dCPdvel * cos_yaw**pP
 
         # print('in solve_nonlinear', self.dCp_out_dyaw, self.dCp_out_dvel)
 
-        self.dCt_out_dyaw = (-np.sin(yaw*np.pi/180.))*(np.pi/180.)*2.*CT*np.cos(yaw*np.pi/180.)
-        self.dCt_out_dvel = dCTdvel*np.cos(yaw*np.pi/180.)**2.
+        self.dCt_out_dyaw = (-np.sin(yaw)) * (np.pi/180.)*2.*CT*cos_yaw
+        self.dCt_out_dvel = dCTdvel*cos_yaw**2.
 
         # normalize on incoming wind speed to correct coefficients for yaw
-        self.unknowns['Cp_out'] = Cp_out
-        self.unknowns['Ct_out'] = Ct_out
+        outputs['Cp_out'] = Cp_out
+        outputs['Ct_out'] = Ct_out
 
-    def linearize(self, params, unknowns, resids):  # standard central differencing
-
-        # obtain necessary inputs
-        direction_id = self.direction_id
+    def compute_partials(self, inputs, partials, discrete_inputs=None):
+        direction_id = self.options['direction_id']
 
         # compile Jacobian dict
-        J = {}
-        J['Cp_out', 'yaw%i' % direction_id] = np.eye(self.nTurbines)*self.dCp_out_dyaw
-        J['Cp_out', 'wtVelocity%i' % direction_id] = np.eye(self.nTurbines)*self.dCp_out_dvel
-        J['Ct_out', 'yaw%i' % direction_id] = np.eye(self.nTurbines)*self.dCt_out_dyaw
-        J['Ct_out', 'wtVelocity%i' % direction_id] = np.eye(self.nTurbines)*self.dCt_out_dvel
-
-        return J
-
+        partials['Cp_out', 'yaw%i' % direction_id] = self.dCp_out_dyaw
+        partials['Cp_out', 'wtVelocity%i' % direction_id] = self.dCp_out_dvel
+        partials['Ct_out', 'yaw%i' % direction_id] = self.dCt_out_dyaw
+        partials['Ct_out', 'wtVelocity%i' % direction_id] = self.dCt_out_dvel
 
 
 ## legacy code for simple COE calculations - should be done more formally
@@ -1370,122 +1369,123 @@ class CPCT_Interpolate_Gradients_Smooth(om.ExplicitComponent):
 
 
 
-#if __name__ == "__main__":
-    #import matplotlib.pyplot as plt
-    #import os
+if __name__ == "__main__":
 
-    #AmaliaLocationsAndHull = loadmat(os.path.join('..','..','doc','examples','input_files','Amalia_locAndHull.mat'))
-    #print(AmaliaLocationsAndHull.keys())
-    #turbineX = AmaliaLocationsAndHull['turbineX'].flatten()
-    #turbineY = AmaliaLocationsAndHull['turbineY'].flatten()
+    import matplotlib.pyplot as plt
+    import os
 
-    #print(turbineX.size)
+    AmaliaLocationsAndHull = loadmat(os.path.join('..','..','doc','examples','input_files','Amalia_locAndHull.mat'))
+    print(AmaliaLocationsAndHull.keys())
+    turbineX = AmaliaLocationsAndHull['turbineX'].flatten()
+    turbineY = AmaliaLocationsAndHull['turbineY'].flatten()
 
-    #nTurbines = len(turbineX)
-    #locations = np.zeros([nTurbines, 2])
-    #for i in range(0, nTurbines):
-        #locations[i] = np.array([turbineX[i], turbineY[i]])
+    print(turbineX.size)
 
-    ## get boundary information
-    #vertices, unit_normals = calculate_boundary(locations)
+    nTurbines = len(turbineX)
+    locations = np.zeros([nTurbines, 2])
+    for i in range(0, nTurbines):
+        locations[i] = np.array([turbineX[i], turbineY[i]])
 
-    #print(vertices, unit_normals)
+    # get boundary information
+    vertices, unit_normals = calculate_boundary(locations)
 
-    ## define point of interest
-    #resolution = 100
-    #x = np.linspace(min(turbineX), max(turbineX), resolution)
-    #y = np.linspace(min(turbineY), max(turbineY), resolution)
-    #xx, yy = np.meshgrid(x, y)
-    #xx = xx.flatten()
-    #yy = yy.flatten()
-    #nPoints = len(xx)
-    #p = np.zeros([nPoints, 2])
-    #for i in range(0, nPoints):
-        #p[i] = np.array([xx[i], yy[i]])
+    print(vertices, unit_normals)
 
-    ## calculate distance from each point to each face
-    #face_distance, inside = calculate_distance(p, vertices, unit_normals, return_bool=True)
+    # define point of interest
+    resolution = 100
+    x = np.linspace(min(turbineX), max(turbineX), resolution)
+    y = np.linspace(min(turbineY), max(turbineY), resolution)
+    xx, yy = np.meshgrid(x, y)
+    xx = xx.flatten()
+    yy = yy.flatten()
+    nPoints = len(xx)
+    p = np.zeros([nPoints, 2])
+    for i in range(0, nPoints):
+        p[i] = np.array([xx[i], yy[i]])
 
-    #print(inside.shape)
-    ## reshape arrays for plotting
-    #xx = np.reshape(xx, (resolution, resolution))
-    #yy = np.reshape(yy, (resolution, resolution))
-    #inside = np.reshape(inside, (resolution, resolution))
+    # calculate distance from each point to each face
+    face_distance, inside = calculate_distance(p, vertices, unit_normals, return_bool=True)
 
-    ## plot points colored based on inside/outside of hull
-    #plt.figure()
-    #plt.pcolor(xx, yy, inside)
-    #plt.plot(turbineX, turbineY, 'ow')
-    #plt.show()
+    print(inside.shape)
+    # reshape arrays for plotting
+    xx = np.reshape(xx, (resolution, resolution))
+    yy = np.reshape(yy, (resolution, resolution))
+    inside = np.reshape(inside, (resolution, resolution))
 
-    ## top = Problem()
-    ##
-    ## root = top.root = Group()
-    ##
-    ## root.add('p1', IndepVarComp('x', np.array([1.0, 1.0])))
-    ## root.add('p2', IndepVarComp('y', np.array([0.75, 0.25])))
-    ## root.add('p', WindFarmAEP(nDirections=2))
-    ##
-    ## root.connect('p1.x', 'p.power_directions')
-    ## root.connect('p2.y', 'p.windrose_frequencies')
-    ##
-    ## top.setup()
-    ## top.run()
-    ##
-    ## # should return 8760.0
-    ## print(root.p.unknowns['AEP'])
-    ## top.check_partial_derivatives()
+    # plot points colored based on inside/outside of hull
+    plt.figure()
+    plt.pcolor(xx, yy, inside)
+    plt.plot(turbineX, turbineY, 'ow')
+    plt.show()
 
-    ## top = Problem()
-    ##
-    ## root = top.root = Group()
-    ##
-    ## root.add('p1', IndepVarComp('x', 1.0))
-    ## root.add('p2', IndepVarComp('y', 2.0))
-    ## root.add('p', MUX(nElements=2))
-    ##
-    ## root.connect('p1.x', 'p.input0')
-    ## root.connect('p2.y', 'p.input1')
-    ##
-    ## top.setup()
-    ## top.run()
-    ##
-    ## # should return 8760.0
-    ## print(root.p.unknowns['Array'])
-    ## top.check_partial_derivatives()
+    # top = Problem()
+    #
+    # root = top.root = Group()
+    #
+    # root.add('p1', IndepVarComp('x', np.array([1.0, 1.0])))
+    # root.add('p2', IndepVarComp('y', np.array([0.75, 0.25])))
+    # root.add('p', WindFarmAEP(nDirections=2))
+    #
+    # root.connect('p1.x', 'p.power_directions')
+    # root.connect('p2.y', 'p.windrose_frequencies')
+    #
+    # top.setup()
+    # top.run()
+    #
+    # # should return 8760.0
+    # print(root.p.unknowns['AEP'])
+    # top.check_partial_derivatives()
 
-    ## top = Problem()
-    ##
-    ## root = top.root = Group()
-    ##
-    ## root.add('p1', IndepVarComp('x', np.zeros(2)))
-    ## root.add('p', DeMUX(nElements=2))
-    ##
-    ## root.connect('p1.x', 'p.Array')
-    ##
-    ## top.setup()
-    ## top.run()
-    ##
-    ## # should return 8760.0
-    ## print(root.p.unknowns['output0'])
-    ## print(root.p.unknowns['output1'])
-    ## top.check_partial_derivatives()
+    # top = Problem()
+    #
+    # root = top.root = Group()
+    #
+    # root.add('p1', IndepVarComp('x', 1.0))
+    # root.add('p2', IndepVarComp('y', 2.0))
+    # root.add('p', MUX(nElements=2))
+    #
+    # root.connect('p1.x', 'p.input0')
+    # root.connect('p2.y', 'p.input1')
+    #
+    # top.setup()
+    # top.run()
+    #
+    # # should return 8760.0
+    # print(root.p.unknowns['Array'])
+    # top.check_partial_derivatives()
 
-    ## top = Problem()
-    ##
-    ## root = top.root = Group()
-    ##
-    ## root.add('p1', IndepVarComp('x', np.array([0, 3])))
-    ## root.add('p2', IndepVarComp('y', np.array([1, 0])))
-    ## root.add('p', SpacingComp(nTurbines=2))
-    ##
-    ## root.connect('p1.x', 'p.turbineX')
-    ## root.connect('p2.y', 'p.turbineY')
-    ##
-    ## top.setup()
-    ## top.run()
-    ##
-    ## # print(root.p.unknowns['output0'])
-    ## # print(root.p.unknowns['output1'])
-    ## top.check_partial_derivatives()
+    # top = Problem()
+    #
+    # root = top.root = Group()
+    #
+    # root.add('p1', IndepVarComp('x', np.zeros(2)))
+    # root.add('p', DeMUX(nElements=2))
+    #
+    # root.connect('p1.x', 'p.Array')
+    #
+    # top.setup()
+    # top.run()
+    #
+    # # should return 8760.0
+    # print(root.p.unknowns['output0'])
+    # print(root.p.unknowns['output1'])
+    # top.check_partial_derivatives()
+
+    # top = Problem()
+    #
+    # root = top.root = Group()
+    #
+    # root.add('p1', IndepVarComp('x', np.array([0, 3])))
+    # root.add('p2', IndepVarComp('y', np.array([1, 0])))
+    # root.add('p', SpacingComp(nTurbines=2))
+    #
+    # root.connect('p1.x', 'p.turbineX')
+    # root.connect('p2.y', 'p.turbineY')
+    #
+    # top.setup()
+    # top.run()
+    #
+    # # print(root.p.unknowns['output0'])
+    # # print(root.p.unknowns['output1'])
+    # top.check_partial_derivatives()
 

@@ -7,7 +7,7 @@ import openmdao.api as om
 from openmdao.utils.assert_utils import assert_rel_error, assert_check_partials
 
 from plantenergy.GeneralWindFarmComponents import WindFrame, AdjustCtCpYaw, WindFarmAEP, \
-     WindDirectionPower, SpacingComp, BoundaryComp
+     WindDirectionPower, SpacingComp, BoundaryComp, CPCT_Interpolate_Gradients_Smooth
 
 
 class TestWindFarmComponentPartials(unittest.TestCase):
@@ -192,6 +192,31 @@ class TestWindFarmComponentPartials(unittest.TestCase):
 
         partials = prob.check_partials(method='cs', out_stream=None)
         assert_check_partials(partials, atol=1e2, rtol=1e-9)
+
+    def test_CPCT_Interpolate_Gradients_Smooth(self):
+        # Circle
+        prob = om.Problem()
+        model = prob.model
+
+        nTurbines = 5
+        datasize = 6
+
+        model.add_subsystem('comp', CPCT_Interpolate_Gradients_Smooth(nTurbines=nTurbines, datasize=datasize),
+                            promotes=['*'])
+
+        prob.setup(force_alloc_complex=True)
+
+        prob['yaw0'] = 0.2 * np.pi * np.random.random(nTurbines)
+        prob['wtVelocity0'] = 10.0 * np.random.random(nTurbines)
+
+        prob['gen_params:windSpeedToCPCT_wind_speed'] = np.linspace(0.0, 10.0, datasize)
+        prob['gen_params:windSpeedToCPCT_CP'] = np.array([0.3, 0.5, 0.44, 0.47, 0.32, 0.2])
+        prob['gen_params:windSpeedToCPCT_CT'] = np.array([0.7, 0.76, 0.74, 0.65, 0.4, 0.3])
+
+        prob.run_model()
+
+        partials = prob.check_partials(method='cs', out_stream=None)
+        assert_check_partials(partials, atol=1e2, rtol=3e-6)
 
 if __name__ == '__main__':
     unittest.main()
