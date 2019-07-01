@@ -8,7 +8,7 @@ import openmdao.api as om
 
 from plantenergy.OptimizationGroups import *
 from plantenergy.GeneralWindFarmComponents import calculate_boundary
-#from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
+from plantenergy.gauss import gauss_wrapper, add_gauss_params_IndepVarComps
 from plantenergy.floris import floris_wrapper, add_floris_params_IndepVarComps
 # from wakeexchange.larsen import larsen_wrapper, add_larsen_params_IndepVarComps
 # from wakeexchange.jensen import jensen_wrapper, add_jensen_params_IndepVarComps
@@ -134,6 +134,7 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
         for dir in np.arange(0, self.nDirections):
             np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'], self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'], self.rtol, self.atol)
 
+
 class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
 
     @classmethod
@@ -191,8 +192,10 @@ class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
         prob.model.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
 
         # initialize problem
-        prob.setup(check=True)
-        prob.set_solver_print(level=2)
+        prob.setup()
+
+        # Don't print any output
+        prob.set_solver_print(level=-1)
 
         # assign values to constant inputs (not design variables)
         NREL5MWCPCT = pickle.load(open('./input_files/NREL5MWCPCT_smooth_dict.p'))
@@ -240,7 +243,6 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        raise unittest.SkipTest('Gauss not finished')
 
         super(TotalDerivTestsGaussAEPOpt_VestasV80, self).setUpClass()
         nTurbines = 16
@@ -342,7 +344,7 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
                                        minSpacing=minSpacing, use_rotor_components=False, wake_model=gauss_wrapper,
                                        params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=True,
                                        wake_model_options=wake_model_options,
-                                       params_IndepVar_args={'nRotorPoints': nRotorPoints},
+                                       params_IdepVar_args={'nRotorPoints': nRotorPoints},
                                        cp_curve_spline=cp_curve_spline, cp_points=cp_curve_cp.size))
         # print("HERE 1")
         # set up optimizer
@@ -425,30 +427,30 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
         prob.run_model()
 
         # pass results to self for use with unit test
-        self.J = prob.check_totals()
+        self.J = prob.check_totals(out_stream=None)
         self.nDirections = nDirections
 
     def testObj_x_v80(self):
-        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'],
-                                   self.J[('obj', 'turbineX')]['J_fd'],
+        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'],
+                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_y(self):
-        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['J_fwd'],
-                                   self.J[('obj', 'turbineY')]['J_fd'],
+        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fwd'],
+                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_yaw(self):
         for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['J_fwd'],
-                                       self.J[('obj', 'yaw%i' % dir)]['J_fd'],
+            np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'],
+                                       self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'],
                                        self.rtol, self.atol)
+
 
 class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        raise unittest.SkipTest('Gauss not finished')
         super(TotalDerivTestsGaussAEPOpt_NREL5MW, self).setUpClass()
         nTurbines = 16
         nDirections = 50
@@ -539,7 +541,7 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
                                        minSpacing=minSpacing, use_rotor_components=False, wake_model=gauss_wrapper,
                                        params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=True,
                                        wake_model_options=wake_model_options,
-                                       params_IndepVar_args={'nRotorPoints': nRotorPoints},
+                                       params_IdepVar_args={'nRotorPoints': nRotorPoints},
                                        cp_curve_spline=cp_curve_spline, cp_points=cp_curve_cp.size))
         # print("HERE 1")
         # set up optimizer
@@ -622,30 +624,30 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         prob.run_model()
 
         # pass results to self for use with unit test
-        self.J = prob.check_total_derivatives(out_stream=None)
+        self.J = prob.check_totals(out_stream=None)
         self.nDirections = nDirections
 
     def testObj_x_v80(self):
-        np.testing.assert_allclose(self.J[('obj', 'turbineX')]['J_fwd'],
-                                   self.J[('obj', 'turbineX')]['J_fd'],
+        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'],
+                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_y(self):
-        np.testing.assert_allclose(self.J[('obj', 'turbineY')]['J_fwd'],
-                                   self.J[('obj', 'turbineY')]['J_fd'],
+        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fwd'],
+                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_yaw(self):
         for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.J[('obj', 'yaw%i' % dir)]['J_fwd'],
-                                       self.J[('obj', 'yaw%i' % dir)]['J_fd'],
+            np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'],
+                                       self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'],
                                        self.rtol, self.atol)
+
 
 class GradientTestsGauss(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        raise unittest.SkipTest('Gauss not finished')
         super(GradientTestsGauss, self).setUpClass()
 
         nTurbines = 6
@@ -684,7 +686,7 @@ class GradientTestsGauss(unittest.TestCase):
         #                              wake_model=gauss_wrapper, differentiable=True,
         #                              params_IdepVar_func=add_gauss_params_IndepVarComps,
         #                              wake_model_options={'nSamples': 0},
-        #                              params_IndepVar_args=None))
+        #                              params_IdepVar_args=None))
         #
         # # initialize problem
         # prob.setup()
@@ -746,7 +748,7 @@ class GradientTestsGauss(unittest.TestCase):
         Cp = np.zeros(nTurbs)
         generatorEfficiency = np.zeros(nTurbs)
         yaw = np.zeros(nTurbs)
-        minSpacing = np.array([2.])  # number of rotor diameters
+        minSpacing = 2.  # number of rotor diameters
 
         # define initial values
         for turbI in range(0, nTurbs):
@@ -813,7 +815,7 @@ class GradientTestsGauss(unittest.TestCase):
                                        minSpacing=minSpacing, differentiable=True, use_rotor_components=False,
                                        wake_model=gauss_wrapper, wake_model_options=wake_model_options,
                                        params_IdepVar_func=add_gauss_params_IndepVarComps,
-                                       params_IndepVar_args={'nRotorPoints': nRotorPoints},
+                                       params_IdepVar_args={'nRotorPoints': nRotorPoints},
                                        cp_curve_spline=cp_curve_spline, cp_points=cp_curve_wind_speed.size))
 
         # set up optimizer
@@ -894,37 +896,42 @@ class GradientTestsGauss(unittest.TestCase):
         print("RAN")
         # pass results to self for use with unit test
         self.J = prob.check_partials(out_stream=None)
-        self.Jt = prob.check_total_derivatives(out_stream=None)
+        self.Jt = prob.check_totals(out_stream=None)
 
         # print("J = ", self.J)
         # print(self.J)
 
     def testGaussGrads_wtVelocity0_turbineXw(self):
-        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fd'], self.rtol_p, self.atol_p)
+        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fwd'],
+                                   self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fd'], self.rtol_p, self.atol_p)
 
     def testGaussGrads_wtVelocity0_turbineYw(self):
-        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fd'], self.rtol_p, self.atol_p)
+        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fwd'],
+                                   self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineYw')]['J_fd'], self.rtol_p, self.atol_p)
 
     def testGaussGrads_wtVelocity0_rotorDiameter(self):
-        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'rotorDiameter')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'rotorDiameter')]['J_fd'], self.rtol_p, self.atol_p)
+        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'rotorDiameter')]['J_fwd'],
+                                   self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'rotorDiameter')]['J_fd'], self.rtol_p, self.atol_p)
 
     def testGaussGrads_wtVelocity0_yaw0(self):
-        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fd'], self.rtol_p, self.atol_p)
+        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fwd'],
+                                   self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'yaw0')]['J_fd'], self.rtol_p, self.atol_p)
 
     def testGaussGrads_wtVelocity0_hubHeight(self):
-        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fwd'], self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fd'], self.rtol_p, self.atol_p)
+        np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fwd'],
+                                   self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'hubHeight')]['J_fd'], self.rtol_p, self.atol_p)
 
     def testObj_x(self):
-        np.testing.assert_allclose(self.Jt[('obj', 'turbineX')]['J_fwd'], self.Jt[('obj', 'turbineX')]['J_fd'], self.rtol_t, self.atol_t)
+        np.testing.assert_allclose(self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol_t, self.atol_t)
 
     def testObj_y(self):
-        np.testing.assert_allclose(self.Jt[('obj', 'turbineY')]['J_fwd'], self.Jt[('obj', 'turbineY')]['J_fd'],
+        np.testing.assert_allclose(self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fd'],
                                    self.rtol_t, self.atol_t)
 
     def testObj_yaw(self):
         for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.Jt[('obj', 'yaw%i' % dir)]['J_fwd'],
-                                       self.Jt[('obj', 'yaw%i' % dir)]['J_fd'], self.rtol_t, self.atol_t)
+            np.testing.assert_allclose(self.Jt[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'],
+                                       self.Jt[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'], self.rtol_t, self.atol_t)
 
 
 class GradientTestsCtCpSingleValue(unittest.TestCase):
@@ -1264,7 +1271,6 @@ class GradientTestsPowerCP(unittest.TestCase):
         cp_curve_spline.set_smoothing_factor(.0001)
 
         # set up problem
-        raise unittest.SkipTest('Gauss not finished')
         prob = om.Problem(model=AEPGroup(nTurbines=nTurbines, use_rotor_components=False, wake_model=gauss_wrapper,
                                      cp_points=cp_curve_wind_speed.size, cp_curve_spline=cp_curve_spline))
 
@@ -1345,7 +1351,6 @@ class GradientTestsPowerCurveDefinition(unittest.TestCase):
         Ar = 0.25 * np.pi * rotorDiameter[0] ** 2
 
         # set up problem
-        raise unittest.SkipTest('Gauss not finished')
 
         prob = om.Problem(model=AEPGroup(nTurbines=nTurbines, use_rotor_components=False, wake_model=gauss_wrapper, nDirections=10))
 
@@ -1363,9 +1368,9 @@ class GradientTestsPowerCurveDefinition(unittest.TestCase):
         prob['Cp_in'] = Cp
         prob['generatorEfficiency'] = generatorEfficiency
         prob['windSpeeds'] = np.array([wind_speed])
-        prob['windFrequencies'] = np.array([wind_frequency])
+        prob['windFrequencies'] = wind_frequency
         prob['air_density'] = air_density
-        prob['windDirections'] = np.array([wind_direction])
+        prob['windDirections'] = wind_direction
         prob['model_params:FLORISoriginal'] = False
 
 
@@ -1435,7 +1440,7 @@ class GradientTestsConstraintComponents(unittest.TestCase):
         super(GradientTestsConstraintComponents, self).setUpClass()
 
         nTurbines = 38
-        self.rtol = 1E-6
+        self.rtol = 1E-5
         self.atol = 1E-3
 
         np.random.seed(seed=10)
@@ -1477,17 +1482,16 @@ class GradientTestsConstraintComponents(unittest.TestCase):
         # prob = om.Problem(model=OptAEP(nTurbines, nDirections=1))
 
         wake_model_options = {'differentiable': True, 'nSamples': 0}
-        raise unittest.SkipTest('Gauss not finished')
 
         prob_polygon = om.Problem(model=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=nVertices,
                                                minSpacing=minSpacing, use_rotor_components=False, wake_model=gauss_wrapper,
                                                params_IdepVar_func=add_gauss_params_IndepVarComps,
-                                               wake_model_options=wake_model_options, params_IndepVar_args=None))
+                                               wake_model_options=wake_model_options, params_IdepVar_args=None))
 
         prob_circle = om.Problem(model=OptAEP(nTurbines=nTurbines, nDirections=windDirections.size, nVertices=1,
                                               minSpacing=minSpacing, use_rotor_components=False, wake_model=gauss_wrapper,
                                               params_IdepVar_func=add_gauss_params_IndepVarComps,
-                                              wake_model_options=wake_model_options, params_IndepVar_args=None))
+                                              wake_model_options=wake_model_options, params_IdepVar_args=None))
 
         probs = [prob_polygon, prob_circle]
         count = 0
@@ -1541,41 +1545,26 @@ class GradientTestsConstraintComponents(unittest.TestCase):
             prob.run_model()
 
         # pass results to self for use with unit test
-        self.J = prob_polygon.check_totals(out_stream=None)
-        self.J_circle = prob_circle.check_totals(out_stream=None)
+        self.J = prob_polygon.check_totals(out_stream=None, step=1e-4)
+        self.J_circle = prob_circle.check_totals(out_stream=None, step=1e-4)
         self.nDirections = nDirections
 
         # print(self.J)
 
     def testSpacingCon(self):
 
-        np.testing.assert_allclose(self.J[('sc', 'turbineX')]['J_fwd'], self.J[('sc', 'turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('sc', 'turbineY')]['J_fwd'], self.J[('sc', 'turbineY')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
 
     def testBoundaryConPolygon(self):
 
-        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineX')]['J_fwd'], self.J[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineY')]['J_fwd'], self.J[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
 
     def testBoundaryConCircle(self):
 
-        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineX')]['J_fwd'], self.J_circle[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineY')]['J_fwd'], self.J_circle[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
-
-    def testSpacingConRev(self):
-
-        np.testing.assert_allclose(self.J[('sc', 'turbineX')]['J_rev'], self.J[('sc', 'turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('sc', 'turbineY')]['J_rev'], self.J[('sc', 'turbineY')]['J_fd'], self.rtol, self.atol)
-
-    def testBoundaryConPolygonRev(self):
-
-        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineX')]['J_rev'], self.J[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('boundaryDistances', 'turbineY')]['J_rev'], self.J[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
-
-    def testBoundaryConCircleRev(self):
-
-        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineX')]['J_rev'], self.J_circle[('boundaryDistances', 'turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J_circle[('boundaryDistances', 'turbineY')]['J_rev'], self.J_circle[('boundaryDistances', 'turbineY')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
 
 
 # TODO create gradient tests for all components

@@ -1,14 +1,13 @@
 import unittest
 import numpy as np
 
-from openmdao.api import Group
+import openmdao.api as om
+
 from plantenergy.OptimizationGroups import AEPGroup
 
 # from fusedwake.WindTurbine import WindTurbine
 # from fusedwake.WindFarm import WindFarm
 # from windIO.Plant import WTLayout, yaml
-
-from openmdao.api import Problem
 
 
 class test_floris(unittest.TestCase):
@@ -65,13 +64,13 @@ class test_floris(unittest.TestCase):
                          'interp_type': 1,
                          'nRotorPoints': 1}
 
-        # prob = Problem(root=AEPGroup(nTurbines, nDirections, wake_model=floris_wrapper, wake_model_options=model_options,
+        # prob = Problem(root=AEPGroup(nTurbines=nTurbines, nDirections=nDirections, wake_model=floris_wrapper, wake_model_options=model_options,
         #                              params_IdepVar_func=add_floris_params_IndepVarComps,
-        #                              params_IndepVar_args={'use_rotor_components': False}))
+        #                              params_IdepVar_args={'use_rotor_components': False}))
         from plantenergy.OptimizationGroups import OptAEP
-        prob = Problem(root=OptAEP(nTurbines, differentiable=True, use_rotor_components=False, wake_model=floris_wrapper,
-                                     params_IdepVar_func=add_floris_params_IndepVarComps,
-                                     wake_model_options=model_options))
+        prob = om.Problem(root=OptAEP(nTurbines=nTurbines, differentiable=True, use_rotor_components=False, wake_model=floris_wrapper,
+                                      params_IdepVar_func=add_floris_params_IndepVarComps,
+                                      wake_model_options=model_options))
 
         # initialize problem
         prob.setup(check=False)
@@ -96,7 +95,7 @@ class test_floris(unittest.TestCase):
         prob['model_params:useWakeAngle'] = False
 
         # run the problem
-        prob.run()
+        prob.run_model()
         print(prob['wtVelocity0'])
         self.prob = prob
 
@@ -150,13 +149,13 @@ class test_jensen(unittest.TestCase):
         # set up problem
 
         wake_model_options = None
-        # prob = Problem(root=AEPGroup(nTurbines, nDirections, wake_model=jensen_wrapper, wake_model_options=wake_model_options,
-        #                              params_IdepVar_func=add_jensen_params_IndepVarComps,
-        #                              params_IndepVar_args={'use_angle': False}))
-        prob = Problem(
-            root=AEPGroup(nTurbines, nDirections, wake_model=jensen_wrapper, wake_model_options=wake_model_options,
-                          params_IdepVar_func=add_jensen_params_IndepVarComps,
-                          params_IndepVar_args={'use_angle': False}))
+        # prob = om.Problem(model=AEPGroup(nTurbines=nTurbines, nDirections, wake_model=jensen_wrapper, wake_model_options=wake_model_options,
+        #                                 params_IdepVar_func=add_jensen_params_IndepVarComps,
+        #                                 params_IdepVar_args={'use_angle': False}))
+        prob = om.Problem(
+            model=AEPGroup(nTurbines=nTurbines, nDirections=nDirections, wake_model=jensen_wrapper, wake_model_options=wake_model_options,
+                           params_IdepVar_func=add_jensen_params_IndepVarComps,
+                           params_IdepVar_args={'use_angle': False}))
 
         # initialize problem
         prob.setup(check=True)
@@ -180,7 +179,7 @@ class test_jensen(unittest.TestCase):
         # prob['model_params:alpha'] = 0.1
 
         # run the problem
-        prob.run()
+        prob.run_model()
 
         self.prob = prob
 
@@ -193,6 +192,7 @@ class test_jensen(unittest.TestCase):
     def testPower(self):
         np.testing.assert_allclose(self.prob['wtPower0'], np.array([1791.08942 , 1791.08942 , 1034.134939, 1034.134939,  976.313113,
         976.313113]))
+
 
 class test_guass(unittest.TestCase):
 
@@ -243,10 +243,10 @@ class test_guass(unittest.TestCase):
         # set up problem
 
         wake_model_options = {'nSamples': 0}
-        prob = Problem(root=AEPGroup(nTurbines=nTurbines, nDirections=nDirections, wake_model=gauss_wrapper,
-                                     wake_model_options=wake_model_options, datasize=0, use_rotor_components=False,
-                                     params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=True,
-                                     params_IndepVar_args={}))
+        prob = om.Problem(model=AEPGroup(nTurbines=nTurbines, nDirections=nDirections, wake_model=gauss_wrapper,
+                                         wake_model_options=wake_model_options, datasize=0, use_rotor_components=False,
+                                         params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=True,
+                                         params_IdepVar_args={}))
 
         # initialize problem
         prob.setup(check=True)
@@ -270,7 +270,7 @@ class test_guass(unittest.TestCase):
         prob['Cp_in'] = Cp
 
         # run the problem
-        prob.run()
+        prob.run_model()
 
         self.prob = prob
 
@@ -392,9 +392,9 @@ class test_guass(unittest.TestCase):
 #
 #         model_options['wf_instance'] = WF
 #
-#         prob = Problem(root=AEPGroup(nTurbines, nDirections, wake_model=larsen_wrapper, wake_model_options=model_options,
-#                                      params_IdepVar_func=add_larsen_params_IndepVarComps,
-#                                      params_IndepVar_args={'nTurbines': nTurbines, 'datasize': model_options['datasize']}))
+#         prob = om.Problem(model=AEPGroup(nTurbines=nTurbines, nDirections=nDirections, wake_model=larsen_wrapper, wake_model_options=model_options,
+#                                          params_IdepVar_func=add_larsen_params_IndepVarComps,
+#                                          params_IdepVar_args={'nTurbines': nTurbines, 'datasize': model_options['datasize']}))
 #
 #         # initialize problem
 #         prob.setup(check=True)
@@ -418,7 +418,7 @@ class test_guass(unittest.TestCase):
 #         prob['model_params:Ia'] = Ia
 #
 #         # run the problem
-#         prob.run()
+#         prob.run_model()
 #
 #         self.prob = prob
 #
