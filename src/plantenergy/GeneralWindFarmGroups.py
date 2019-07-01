@@ -57,8 +57,11 @@ class RotorSolveGroup(om.Group):
         else:
             self.linear_solver = om.ScipyKrylov()
 
-        self.nonlinear_solver = om.NonlinearBlockGS()
+        self.nonlinear_solver = om.NewtonSolver()
         self.nonlinear_solver.options['atol'] = epsilon
+
+        # OpenMDAO 1.x default
+        self.nonlinear_solver.options['maxiter'] = 100
 
         self.add_subsystem('CtCp', CPCT_Interpolate_Gradients_Smooth(nTurbines=nTurbines, direction_id=direction_id, datasize=datasize),
                            promotes=['gen_params:*', 'yaw%i' % direction_id,

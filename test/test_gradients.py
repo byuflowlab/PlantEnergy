@@ -191,8 +191,8 @@ class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
         prob.model.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
 
         # initialize problem
-        prob.setup()
-        prob.set_solver_print(level=0)
+        prob.setup(check=True)
+        prob.set_solver_print(level=2)
 
         # assign values to constant inputs (not design variables)
         NREL5MWCPCT = pickle.load(open('./input_files/NREL5MWCPCT_smooth_dict.p'))
