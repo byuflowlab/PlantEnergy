@@ -192,7 +192,7 @@ class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
 
         # initialize problem
         prob.setup()
-
+        prob.set_solver_print(level=0)
 
         # assign values to constant inputs (not design variables)
         NREL5MWCPCT = pickle.load(open('./input_files/NREL5MWCPCT_smooth_dict.p'))

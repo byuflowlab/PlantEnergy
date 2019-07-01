@@ -302,6 +302,9 @@ class AEPGroup(om.Group):
                 params_IdepVar_args = {}
             params_IdepVar_func(self, **params_IdepVar_args)
 
+        # indepvarcomp for yaw
+        dir_ivc = self.add_subsystem('y_ivc', om.IndepVarComp(), promotes=['*'])
+
         # add components and groups
         wind_direct_demux = self.add_subsystem(name='windDirectionsDeMUX', subsys=om.DemuxComp(vec_size=nDirections))
         wind_direct_demux.add_var('r', shape=(nDirections, ), units=direction_units)
@@ -363,8 +366,6 @@ class AEPGroup(om.Group):
         power_mux.add_var('r', shape=(1, ), units=power_units)
 
         self.add_subsystem('AEPcomp', WindFarmAEP(nDirections=nDirections), promotes=['*'])
-
-        dir_ivc = self.add_subsystem('y_ivc', om.IndepVarComp(), promotes=['*'])
 
         # connect components
         self.connect('windDirections', 'windDirectionsDeMUX.r')
