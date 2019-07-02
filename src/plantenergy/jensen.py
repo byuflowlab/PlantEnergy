@@ -4,33 +4,50 @@ Created by Jared J. Thomas, Jul. 2016.
 Brigham Young University
 """
 
-from openmdao.api import IndepVarComp, Group
+import openmdao.api as om
 from jensen3d.JensenOpenMDAOconnect import Jensen
 
-def add_jensen_params_IndepVarComps(openmdao_object, use_angle=False):
+
+def add_jensen_params_IndepVarComps(om_group, use_angle=False):
+
+    ivc = om_group.add_subsystem('model_params', om.IndepVarComp(), promotes=['*'])
 
     # add variable tree and indep-var stuff for Jensen
-    openmdao_object.add('jp0', IndepVarComp('model_params:alpha', 0.1, pass_by_obj=True,
-                                            desc='parameter for controlling wake velocity deficit'),
-                        promotes=['*'])
+    ivc.add_discrete_output('model_params:alpha', 0.1,
+                            desc='parameter for controlling wake velocity deficit')
+
     if use_angle:
-        openmdao_object.add('jp1', IndepVarComp('model_params:spread_angle', 20.0, units='deg', pass_by_obj=True,
-                                                desc='wake spreading angle in degrees. angle for one side of wake)'),
-                            promotes=['*'])
+        ivc.add_discrete_output('model_params:spread_angle', 20.0,
+                                desc='wake spreading angle in degrees. angle for one side of wake) (deg)')
 
-    openmdao_object.add('bp17', IndepVarComp('model_params:wec_factor', val=1.0, pass_by_object=True,
-                   desc='wec_factor'), promotes=['*'])
+    ivc.add_discrete_output('model_params:wec_factor', val=1.0,
+                            desc='wec_factor')
 
 
-class jensen_wrapper(Group):
+class jensen_wrapper(om.Group):
     #Group with all the components for the Jensen model
 
-    def __init__(self, nTurbs, direction_id=0, wake_model_options=None):
-        super(jensen_wrapper, self).__init__()
+    def initialize(self):
+        """
+        Declare options.
+        """
+        self.options.declare('nTurbines', types=int, default=0,
+                             desc="Number of wind turbines.")
+        self.options.declare('direction_id', types=int, default=0,
+                             desc="Direction index.")
+        self.options.declare('wake_model_options', types=dict, default=None, allow_none=True,
+                             desc="Wake Model instantiation parameters.")
+
+    def setup(self):
+        opt = self.options
+        nTurbs = opt['nTurbines']
+        direction_id = opt['direction_id']
+        wake_model_options = opt['wake_model_options']
 
         try:
             wake_model_options['variant']
         except:
             wake_model_options['variant'] = 'TopHat'
 
-        self.add('jensen', Jensen(nTurbs, direction_id, model_options=wake_model_options), promotes=['*'])
+        self.add_subsystem('jensen', Jensen(nTurbines=nTurbs, direction_id=direction_id,
+                                            model_options=wake_model_options), promotes=['*'])
