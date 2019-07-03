@@ -1,7 +1,8 @@
 import unittest
+
 import numpy as np
 
-from openmdao.api import Problem, Group
+import openmdao.api as om
 
 class test_windframe(unittest.TestCase):
 
@@ -18,8 +19,8 @@ class test_windframe(unittest.TestCase):
         from plantenergy.GeneralWindFarmComponents import WindFrame
 
         # define openmdao problem
-        prob = Problem(root=Group())
-        prob.root.add('windframe', WindFrame(nTurbines=2), promotes=['*'])
+        prob = om.Problem()
+        prob.model.add_subsystem('windframe', WindFrame(nTurbines=2), promotes=['*'])
 
         # initialize openmdao problem
         prob.setup(check=False)
@@ -32,7 +33,7 @@ class test_windframe(unittest.TestCase):
         prob['wind_direction'] = np.array([wind_direction])
 
         # run the problem
-        prob.run()
+        prob.run_model()
 
         self.prob = prob
 
@@ -57,8 +58,8 @@ class test_power_curve(unittest.TestCase):
         from plantenergy.GeneralWindFarmComponents import WindDirectionPower
 
         # define openmdao problem
-        prob = Problem(root=Group())
-        prob.root.add('power', WindDirectionPower(nTurbines=nTurbines), promotes=['*'])
+        prob = om.Problem()
+        prob.model.add_subsystem('power', WindDirectionPower(nTurbines=nTurbines), promotes=['*'])
 
         # initialize openmdao problem
         prob.setup(check=False)
@@ -79,7 +80,7 @@ class test_power_curve(unittest.TestCase):
         prob['use_power_curve_definition'] = True
 
         # run the problem
-        prob.run()
+        prob.run_model()
 
         def power_curve(velocity, cutin, cutout, ratedws, ratedp):
 

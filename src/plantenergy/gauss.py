@@ -3,63 +3,82 @@ gauss.py
 Created by Jared J. Thomas, Jul. 2016.
 Brigham Young University
 """
+from __future__ import print_function, division, absolute_import
 
-from openmdao.api import IndepVarComp, Group
-from gaussianwake.gaussianwake import GaussianWake
 import numpy as np
 
+import openmdao.api as om
 
-def add_gauss_params_IndepVarComps(openmdao_object, nRotorPoints=1):
+from gaussianwake.gaussianwake import GaussianWake
 
-    # openmdao_object.add('bp0', IndepVarComp('model_params:ke', 0.052, pass_by_object=True))
-    # openmdao_object.add('bp1', IndepVarComp('model_params:rotation_offset_angle', val=1.56, units='deg',
-                                        #    pass_by_object=True))
-    # openmdao_object.add('bp2', IndepVarComp('model_params:spread_angle', val=5.84, units='deg', pass_by_object=True))
+
+def add_gauss_params_IndepVarComps(openmdao_group, nRotorPoints=1):
+
+    ivc = openmdao_group.add_subsystem('model_params', om.IndepVarComp(), promotes_outputs=['*'])
+
+    # ivc.add_discrete_output('model_params:ke', 0.052)
+    # ivc.add_discrete_output('model_params:rotation_offset_angle', val=1.56, units='deg')
+    # ivc.add_discrete_output('model_params:spread_angle', val=5.84, units='deg')
 
     # params for Bastankhah model with yaw
-    openmdao_object.add('bp3', IndepVarComp('model_params:ky', 0.022, pass_by_object=True), promotes=['*'])
-    openmdao_object.add('bp4', IndepVarComp('model_params:kz', 0.022, pass_by_object=True), promotes=['*'])
-    openmdao_object.add('bp5', IndepVarComp('model_params:alpha', 2.32, pass_by_object=True), promotes=['*'])
-    openmdao_object.add('bp6', IndepVarComp('model_params:beta', 0.154, pass_by_object=True), promotes=['*'])
-    openmdao_object.add('bp7', IndepVarComp('model_params:I', 0.075, pass_by_object=True), promotes=['*'])
-    openmdao_object.add('bp8', IndepVarComp('model_params:wake_combination_method', 0, pass_by_object=True),
-                        promotes=['*'])
-    openmdao_object.add('bp9', IndepVarComp('model_params:ti_calculation_method', 0, pass_by_object=True),
-                        promotes=['*'])
-    openmdao_object.add('bp10', IndepVarComp('model_params:calc_k_star', False, pass_by_object=True), promotes=['*'])
-    openmdao_object.add('bp11', IndepVarComp('model_params:sort', True, pass_by_object=True), promotes=['*'])
-    openmdao_object.add('bp12', IndepVarComp('model_params:RotorPointsY', val=np.zeros(nRotorPoints), pass_by_object=True,
-                   desc='rotor swept area sampling Y points centered at (y,z)=(0,0) normalized by rotor radius'),
-                        promotes=['*'])
-    openmdao_object.add('bp13', IndepVarComp('model_params:RotorPointsZ', val=np.zeros(nRotorPoints), pass_by_object=True,
-                   desc='rotor swept area sampling Z points centered at (y,z)=(0,0) normalized by rotor radius'),
-                        promotes=['*'])
-    openmdao_object.add('bp14', IndepVarComp('model_params:z_ref', val=80.0, pass_by_object=True,
-                   desc='wind speed measurement height'), promotes=['*'])
-    openmdao_object.add('bp15', IndepVarComp('model_params:z_0', val=0.0, pass_by_object=True,
-                   desc='ground height'), promotes=['*'])
-    openmdao_object.add('bp16', IndepVarComp('model_params:shear_exp', val=0.15, pass_by_object=True,
-                   desc='wind shear calculation exponent'), promotes=['*'])
+    ivc.add_discrete_output('model_params:ky', 0.022)
+    ivc.add_discrete_output('model_params:kz', 0.022)
+    ivc.add_discrete_output('model_params:alpha', 2.32)
+    ivc.add_discrete_output('model_params:beta', 0.154)
+    ivc.add_discrete_output('model_params:I', 0.075)
+    ivc.add_discrete_output('model_params:wake_combination_method', 0)
 
-    openmdao_object.add('bp17', IndepVarComp('model_params:wec_factor', val=1.0, pass_by_object=True,
-                   desc='opt_exp_fac'), promotes=['*'])
-    openmdao_object.add('bp18', IndepVarComp('model_params:print_ti', val=False, pass_by_object=True,
-                                             desc='print TI values to a file for use in plotting etc'), promotes=['*'])
-    openmdao_object.add('bp19', IndepVarComp('model_params:wake_model_version', val=2016, pass_by_object=True,
-                                             desc='choose whether to use Bastankhah 2014 or 2016'), promotes=['*'])
-    openmdao_object.add('bp20', IndepVarComp('model_params:sm_smoothing', val=700.0, pass_by_object=True,
-                                             desc='adjust degree of smoothing for TI smooth max'), promotes=['*'])
+    ivc.add_discrete_output('model_params:ti_calculation_method', 0
+                            )
+    ivc.add_discrete_output('model_params:calc_k_star', False)
+    ivc.add_discrete_output('model_params:sort', True)
+    ivc.add_discrete_output('model_params:RotorPointsY', val=np.zeros(nRotorPoints),
+                            desc='rotor swept area sampling Y points centered at (y,z)=(0,0) normalized by rotor radius')
 
-    openmdao_object.add('bp21', IndepVarComp('model_params:exp_rate_multiplier', val=1.0, pass_by_object=True,
-                                             desc='adjust spreading angle of the wake'), promotes=['*'])
+    ivc.add_discrete_output('model_params:RotorPointsZ', val=np.zeros(nRotorPoints),
+                            desc='rotor swept area sampling Z points centered at (y,z)=(0,0) normalized by rotor radius')
 
-    # openmdao_object.add('bp8', IndepVarComp('model_params:yaw_mode', val='bastankhah', pass_by_object=True))
-    # openmdao_object.add('bp9', IndepVarComp('model_params:spread_mode', val='bastankhah', pass_by_object=True))
+    ivc.add_discrete_output('model_params:z_ref', val=80.0,
+                            desc='wind speed measurement height')
+    ivc.add_discrete_output('model_params:z_0', val=0.0,
+                            desc='ground height')
+    ivc.add_discrete_output('model_params:shear_exp', val=0.15,
+                            desc='wind shear calculation exponent')
 
-class gauss_wrapper(Group):
+    ivc.add_discrete_output('model_params:wec_factor', val=1.0,
+                            desc='opt_exp_fac')
+    ivc.add_discrete_output('model_params:print_ti', val=False,
+                            desc='print TI values to a file for use in plotting etc')
+    ivc.add_discrete_output('model_params:wake_model_version', val=2016,
+                            desc='choose whether to use Bastankhah 2014 or 2016')
+    ivc.add_discrete_output('model_params:sm_smoothing', val=700.0,
+                            desc='adjust degree of smoothing for TI smooth max')
 
-    def __init__(self, nTurbs, direction_id=0, wake_model_options=None):
-        super(gauss_wrapper, self).__init__()
+    ivc.add_discrete_output('model_params:exp_rate_multiplier', val=1.0,
+                            desc='adjust spreading angle of the wake')
 
-        self.add('f_1', GaussianWake(nTurbines=nTurbs, direction_id=direction_id, options=wake_model_options),
-                 promotes=['*'])
+    # ivc.add_discrete_output('model_params:yaw_mode', val='bastankhah')
+    # ivc.add_discrete_output('model_params:spread_mode', val='bastankhah')
+
+
+class gauss_wrapper(om.Group):
+
+    def initialize(self):
+        """
+        Declare options.
+        """
+        self.options.declare('nTurbines', types=int, default=0,
+                             desc="Number of wind turbines.")
+        self.options.declare('direction_id', types=int, default=0,
+                             desc="Direction index.")
+        self.options.declare('wake_model_options', types=dict, default=None, allow_none=True,
+                             desc="Wake Model instantiation parameters.")
+
+    def setup(self):
+        opt = self.options
+        nTurbines = opt['nTurbines']
+        direction_id = opt['direction_id']
+        wake_model_options = opt['wake_model_options']
+
+        self.add_subsystem('f_1', GaussianWake(nTurbines=nTurbines, direction_id=direction_id, options=wake_model_options),
+                           promotes=['*'])
