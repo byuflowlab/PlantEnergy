@@ -2,6 +2,7 @@ from openmdao.api import Component, Group, Problem, IndepVarComp
 from akima import Akima, akima_interp
 from plantenergy.utilities import hermite_spline
 import plantenergy.config as config
+import position_constraints
 
 import numpy as np
 from scipy import interp
@@ -647,6 +648,87 @@ class WindDirectionPower(Component):
 
         return J
 
+class PositionConstraintComp(Component):
+    """ Calculates spacing and boundary constraints
+        Written by PJ Stanley, 2019
+    """
+
+    def __init__(self, nTurbines, nBoundaries):
+
+        super(PositionConstraintComp, self).__init__()
+
+        self.nTurbines = nTurbines
+        # Explicitly size input arrays
+        self.add_param('turbineX', val=np.zeros(nTurbines))
+        self.add_param('turbineY', val=np.zeros(nTurbines))
+        self.add_param('rotorDiameter', val=np.zeros(nTurbines))
+
+        self.add_param('boundaryVertices', val=np.zeros((nBoundaries,2)))
+        self.add_param('boundaryNormals', val=np.zeros((nBoundaries,2)))
+
+        self.add_output('spacing_constraint', val=np.zeros((nTurbines-1)*nTurbines/2), pass_by_object=True)
+        self.add_output('boundary_constraint', val=np.zeros(nTurbines), pass_by_object=True)
+
+
+    def solve_nonlinear(self, params, unknowns, resids):
+
+        global nCalls_con
+        nCalls_con += 1
+
+        turbineX = params['turbineX']
+        turbineY = params['turbineY']
+        rotorDiameter = params['rotorDiameter']
+        nTurbines = turbineX.size()
+
+        boundaryVertices = params['boundaryVertices']
+        boundaryNormals = params['boundaryNormals']
+
+
+        dx = np.eye(self.nTurbines)
+        dy = np.zeros((self.nTurbines,self.nTurbines))
+        _,ss_dx,_,bd_dx = position_constraints.constraints_position_dv(turbineX,dx,turbineY,dy,
+                                boundaryVertices,boundaryNormals)
+
+        dx = np.zeros((self.nTurbines,self.nTurbines))
+        dy = np.eye(self.nTurbines)
+        ss,ss_dy,bd,bd_dy = position_constraints.constraints_position_dv(turbineX,dx,turbineY,dy,
+                                boundaryVertices,boundaryNormals)
+
+        bounds = np.zeros(nTurbines)
+        index = np.zeros(nTurbines)
+        for i in range(nTurbines):
+            bounds[i] = np.min(bd[i])
+            index[i] = np.argmin(bd[i])
+
+        self.index = index
+        self.ss_dx = ss_dx
+        self.ss_dy = ss_dy
+        self.bd_dx = bd_dx
+        self.bd_dy = bd_dy
+
+        unknowns['spacing_constraint'] = ss-(2.*rotorDiameter[0])**2
+        unknowns['boundary_constraint'] = bounds
+
+    def linearize(self, params, unknowns, resids):
+
+        nTurbines = params['turbineX'].size()
+
+        # initialize Jacobian dict
+        J = {}
+
+        # populate Jacobian dict
+        J[('spacing_constraint', 'turbineX')] = self.ss_dx.T
+        J[('spacing_constraint', 'turbineY')] = self.ss_dy.T
+
+        db_dx = np.zeros((self.nTurbines,self.nTurbines))
+        db_dy = np.zeros((self.nTurbines,self.nTurbines))
+        for i in range(nTurbines):
+            db_dx[i][i] = self.bd_dx[i][i][self.index[i]]
+            db_dy[i][i] = self.bd_dy[i][i][self.index[i]]
+        J[('boundary_constraint','turbineX')] = db_dx
+        J[('boundary_constraint','turbineY')] = db_dy
+
+        return J
 
 class SpacingComp(Component):
     """
@@ -669,7 +751,7 @@ class SpacingComp(Component):
                        desc='y coordinates of turbines in wind dir. ref. frame')
 
         # Explicitly size output array
-        self.add_output('wtSeparationSquared', val=np.zeros(int((nTurbines-1)*nTurbines/2)),
+        self.add_output('wtSeparationSquared', val=np.zeros(int(nTurbines*(nTurbines-1)/2)),
                         desc='spacing of all turbines in the wind farm')
 
     def solve_nonlinear(self, params, unknowns, resids):
@@ -678,13 +760,15 @@ class SpacingComp(Component):
         turbineX = params['turbineX']
         turbineY = params['turbineY']
         nTurbines = turbineX.size
-        separation_squared = np.zeros(int((nTurbines-1)*nTurbines/2))
+        # separation_squared = np.zeros(int((nTurbines-1)*nTurbines/2))
+        #
+        # k = 0
+        # for i in range(0, nTurbines):
+        #     for j in range(i+1, nTurbines):
+        #         separation_squared[k] = (turbineX[j]-turbineX[i])**2+(turbineY[j]-turbineY[i])**2
+        #         k += 1
+        separation_squared = position_constraints.turbine_spacing_squared(turbineX, turbineY)
 
-        k = 0
-        for i in range(0, nTurbines):
-            for j in range(i+1, nTurbines):
-                separation_squared[k] = (turbineX[j]-turbineX[i])**2+(turbineY[j]-turbineY[i])**2
-                k += 1
         unknowns['wtSeparationSquared'] = separation_squared
 
     def linearize(self, params, unknowns, resids):
@@ -695,33 +779,48 @@ class SpacingComp(Component):
 
         # get number of turbines
         nTurbines = turbineX.size
+        #
+        # # initialize gradient calculation array
+        # dS = np.zeros((int((nTurbines-1.)*nTurbines/2.), 2*nTurbines))
+        #
+        # # set turbine pair counter to zero
+        # k = 0
+        #
+        # # calculate the gradient of the distance between each pair of turbines w.r.t. turbineX and turbineY
+        # for i in range(0, nTurbines):
+        #     for j in range(i+1, nTurbines):
+        #         # separation wrt Xj
+        #         dS[k, j] = 2*(turbineX[j]-turbineX[i])
+        #         # separation wrt Xi
+        #         dS[k, i] = -2*(turbineX[j]-turbineX[i])
+        #         # separation wrt Yj
+        #         dS[k, j+nTurbines] = 2*(turbineY[j]-turbineY[i])
+        #         # separation wrt Yi
+        #         dS[k, i+nTurbines] = -2*(turbineY[j]-turbineY[i])
+        #         # increment turbine pair counter
+        #         k += 1
 
-        # initialize gradient calculation array
-        dS = np.zeros((int((nTurbines-1.)*nTurbines/2.), 2*nTurbines))
+        turbineXd = np.eye(nTurbines)
+        turbineYd = np.zeros((nTurbines, nTurbines))
 
-        # set turbine pair counter to zero
-        k = 0
+        _, separation_squareddx = \
+            position_constraints.turbine_spacing_squared_dv(turbineX, turbineXd, turbineY, turbineYd)
 
-        # calculate the gradient of the distance between each pair of turbines w.r.t. turbineX and turbineY
-        for i in range(0, nTurbines):
-            for j in range(i+1, nTurbines):
-                # separation wrt Xj
-                dS[k, j] = 2*(turbineX[j]-turbineX[i])
-                # separation wrt Xi
-                dS[k, i] = -2*(turbineX[j]-turbineX[i])
-                # separation wrt Yj
-                dS[k, j+nTurbines] = 2*(turbineY[j]-turbineY[i])
-                # separation wrt Yi
-                dS[k, i+nTurbines] = -2*(turbineY[j]-turbineY[i])
-                # increment turbine pair counter
-                k += 1
+        turbineXd = np.zeros((nTurbines, nTurbines))
+        turbineYd = np.eye(nTurbines)
+
+        _, separation_squareddy = \
+            position_constraints.turbine_spacing_squared_dv(turbineX, turbineXd, turbineY, turbineYd)
 
         # initialize Jacobian dict
         J = {}
 
         # populate Jacobian dict
-        J['wtSeparationSquared', 'turbineX'] = dS[:, :nTurbines]
-        J['wtSeparationSquared', 'turbineY'] = dS[:, nTurbines:]
+        # J['wtSeparationSquared', 'turbineX'] = dS[:, :nTurbines]
+        # J['wtSeparationSquared', 'turbineY'] = dS[:, nTurbines:]
+
+        J['wtSeparationSquared', 'turbineX'] = np.transpose(separation_squareddx)
+        J['wtSeparationSquared', 'turbineY'] = np.transpose(separation_squareddy)
 
         return J
 
@@ -781,7 +880,10 @@ class BoundaryComp(Component):
             # print("in comp, locs are: ".format(locations))
 
             # calculate distance from each point to each face
-            unknowns['boundaryDistances'] = calculate_distance(locations,
+            # unknowns['boundaryDistances'] = calculate_distance(locations,
+            #                                                    params['boundaryVertices'], params['boundaryNormals'])
+
+            unknowns['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY,
                                                                params['boundaryVertices'], params['boundaryNormals'])
 
         elif self.type == 'circle':
@@ -789,6 +891,10 @@ class BoundaryComp(Component):
             yc = params['boundary_center'][1]
             r = params['boundary_radius']
             unknowns['boundaryDistances'] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
+            # bv = np.array([[xc, yc]])
+            # br = np.array([[r, r]])
+            # print bv.shape, br.shape
+            # unknowns['boundaryDistances'] = (position_constraints.boundary_distances(turbineX, turbineY, bv, br))**2
 
         else:
             ValueError('Invalid value (%s) encountered in BoundaryComp input -type-. Must be one of [polygon, circle]'
@@ -1450,52 +1556,104 @@ class calcLRC(Component):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import os
 
-    AmaliaLocationsAndHull = loadmat(os.path.join('..','..','doc','examples','input_files','Amalia_locAndHull.mat'))
-    print(AmaliaLocationsAndHull.keys())
-    turbineX = AmaliaLocationsAndHull['turbineX'].flatten()
-    turbineY = AmaliaLocationsAndHull['turbineY'].flatten()
+    import time
 
-    print(turbineX.size)
+    def spacing_2loops(x, y):
+        n = x.size
+        separation_squared = np.zeros(int((n - 1) * n / 2))
+        k = 0
+        for i in range(0, n):
+            for j in range(i + 1, n):
+                separation_squared[k] = (x[j] - x[i]) ** 2 + (y[j] - y[i]) ** 2
+                k += 1
 
-    nTurbines = len(turbineX)
-    locations = np.zeros([nTurbines, 2])
-    for i in range(0, nTurbines):
-        locations[i] = np.array([turbineX[i], turbineY[i]])
 
-    # get boundary information
-    vertices, unit_normals = calculate_boundary(locations)
+        return separation_squared
 
-    print(vertices, unit_normals)
+    def spacing_1loop(x, y):
+        n = x.size
+        separation_squared = np.zeros(int((n - 1) * n / 2))
+        indx_start = 0
+        indx_end = n-1
+        for i in range(0, n):
+                # print i, indx_start, indx_end
+                separation_squared[indx_start:indx_end] = (x[i+1:] - x[i]) ** 2 + (y[i+1:] - y[i]) ** 2
+                # print separation_squared
+                indx_start = np.copy(indx_end)
+                indx_end = indx_start + n-(i+2)
 
-    # define point of interest
-    resolution = 100
-    x = np.linspace(min(turbineX), max(turbineX), resolution)
-    y = np.linspace(min(turbineY), max(turbineY), resolution)
-    xx, yy = np.meshgrid(x, y)
-    xx = xx.flatten()
-    yy = yy.flatten()
-    nPoints = len(xx)
-    p = np.zeros([nPoints, 2])
-    for i in range(0, nPoints):
-        p[i] = np.array([xx[i], yy[i]])
+        return separation_squared
 
-    # calculate distance from each point to each face
-    face_distance, inside = calculate_distance(p, vertices, unit_normals, return_bool=True)
 
-    print(inside.shape)
-    # reshape arrays for plotting
-    xx = np.reshape(xx, (resolution, resolution))
-    yy = np.reshape(yy, (resolution, resolution))
-    inside = np.reshape(inside, (resolution, resolution))
+    # def spacing_min(x, y):
+    #     n = x.size
+    #     min_separation_squared = np.zeros(n)
+    #     for i in np.arange()
 
-    # plot points colored based on inside/outside of hull
-    plt.figure()
-    plt.pcolor(xx, yy, inside)
-    plt.plot(turbineX, turbineY, 'ow')
-    plt.show()
+    x = np.arange(0, 10)
+    y = np.arange(0, 10)
+
+    tic = time.time()
+    s2 = spacing_2loops(x, y)
+    toc = time.time()
+    print 'spacing for two loops:', s2
+    print 'time for two loops:', toc-tic
+
+    tic = time.time()
+    s1 = spacing_1loop(x, y)
+    toc = time.time()
+    print 'spacing for one loops:', s1
+    print 'time for one loops:', toc - tic
+
+    print 'diff: ', s2-s1
+
+    # import matplotlib.pyplot as plt
+    # import os
+    #
+    # AmaliaLocationsAndHull = loadmat(os.path.join('..','..','doc','examples','input_files','Amalia_locAndHull.mat'))
+    # print(AmaliaLocationsAndHull.keys())
+    # turbineX = AmaliaLocationsAndHull['turbineX'].flatten()
+    # turbineY = AmaliaLocationsAndHull['turbineY'].flatten()
+    #
+    # print(turbineX.size)
+    #
+    # nTurbines = len(turbineX)
+    # locations = np.zeros([nTurbines, 2])
+    # for i in range(0, nTurbines):
+    #     locations[i] = np.array([turbineX[i], turbineY[i]])
+    #
+    # # get boundary information
+    # vertices, unit_normals = calculate_boundary(locations)
+    #
+    # print(vertices, unit_normals)
+    #
+    # # define point of interest
+    # resolution = 100
+    # x = np.linspace(min(turbineX), max(turbineX), resolution)
+    # y = np.linspace(min(turbineY), max(turbineY), resolution)
+    # xx, yy = np.meshgrid(x, y)
+    # xx = xx.flatten()
+    # yy = yy.flatten()
+    # nPoints = len(xx)
+    # p = np.zeros([nPoints, 2])
+    # for i in range(0, nPoints):
+    #     p[i] = np.array([xx[i], yy[i]])
+    #
+    # # calculate distance from each point to each face
+    # face_distance, inside = calculate_distance(p, vertices, unit_normals, return_bool=True)
+    #
+    # print(inside.shape)
+    # # reshape arrays for plotting
+    # xx = np.reshape(xx, (resolution, resolution))
+    # yy = np.reshape(yy, (resolution, resolution))
+    # inside = np.reshape(inside, (resolution, resolution))
+    #
+    # # plot points colored based on inside/outside of hull
+    # plt.figure()
+    # plt.pcolor(xx, yy, inside)
+    # plt.plot(turbineX, turbineY, 'ow')
+    # plt.show()
 
     # top = Problem()
     #
