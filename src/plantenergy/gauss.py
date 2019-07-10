@@ -49,6 +49,8 @@ def add_gauss_params_IndepVarComps(openmdao_object, nRotorPoints=1):
                                              desc='choose whether to use Bastankhah 2014 or 2016'), promotes=['*'])
     openmdao_object.add('bp20', IndepVarComp('model_params:sm_smoothing', val=700.0, pass_by_object=True,
                                              desc='adjust degree of smoothing for TI smooth max'), promotes=['*'])
+    openmdao_object.add('bp21', IndepVarComp('model_params:wec_spreading_angle', val=0.0, pass_by_object=True,
+                                             desc='wec angle'), promotes=['*'])
 
     # openmdao_object.add('bp8', IndepVarComp('model_params:yaw_mode', val='bastankhah', pass_by_object=True))
     # openmdao_object.add('bp9', IndepVarComp('model_params:spread_mode', val='bastankhah', pass_by_object=True))
