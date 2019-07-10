@@ -21,8 +21,8 @@ class TotalDerivTestsFlorisAEPOpt(unittest.TestCase):
         super(TotalDerivTestsFlorisAEPOpt, self).setUpClass()
 
         nTurbines = 3
-        self.rtol = 1E-6
-        self.atol = 1E-6
+        self.rtol = 1E-5
+        self.atol = 1E-4
 
         np.random.seed(seed=10)
 
@@ -418,7 +418,7 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
         prob['model_params:kz'] = k_calc
         prob['model_params:print_ti'] = False
         prob['model_params:wake_model_version'] = wake_model_version
-        prob['model_params:opt_exp_fac'] = expansion_factor
+        prob['model_params:wec_factor'] = expansion_factor
 
         # run problem
         prob.run_once()
@@ -614,7 +614,7 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         prob['model_params:kz'] = k_calc
         prob['model_params:print_ti'] = False
         prob['model_params:wake_model_version'] = wake_model_version
-        prob['model_params:opt_exp_fac'] = expansion_factor
+        prob['model_params:wec_factor'] = expansion_factor
 
         # run problem
         prob.run_once()
