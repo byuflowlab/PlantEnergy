@@ -21,7 +21,6 @@ def add_gauss_params_IndepVarComps(openmdao_group, nRotorPoints=1):
     # ivc.add_discrete_output('model_params:spread_angle', val=5.84, units='deg')
 
     # params for Bastankhah model with yaw
-<<<<<<< HEAD
     ivc.add_discrete_output('model_params:ky', 0.022)
     ivc.add_discrete_output('model_params:kz', 0.022)
     ivc.add_discrete_output('model_params:alpha', 2.32)

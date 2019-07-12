@@ -819,14 +819,14 @@ class GradientTestsGauss(unittest.TestCase):
                                        cp_curve_spline=cp_curve_spline, cp_points=cp_curve_wind_speed.size))
 
         # set up optimizer
-        prob.driver = om.pyOptSparseDriver()
-        prob.driver.options['optimizer'] = 'SNOPT'
+        # prob.driver = om.pyOptSparseDriver()
+        # prob.driver.options['optimizer'] = 'SNOPT'
         prob.model.add_objective('obj', scaler=1E-5)
 
         # set optimizer options
-        prob.driver.opt_settings['Verify level'] = 3
-        prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
-        prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
+        # prob.driver.opt_settings['Verify level'] = 3
+        # prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
+        # prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
         # prob.driver.opt_settings['Major iterations limit'] = 1000
         bm = 4
         # select design variables

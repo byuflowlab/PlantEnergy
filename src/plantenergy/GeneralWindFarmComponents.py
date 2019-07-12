@@ -656,87 +656,87 @@ class WindDirectionPower(om.ExplicitComponent):
             partials['dir_power%i' % direction_id, 'Cp'] = ddir_power_dCp
             partials['dir_power%i' % direction_id, 'rotorDiameter'] = ddir_power_drotorDiameter
 
-class PositionConstraintComp(Component):
-    """ Calculates spacing and boundary constraints
-        Written by PJ Stanley, 2019
-    """
-
-    def __init__(self, nTurbines, nBoundaries):
-
-        super(PositionConstraintComp, self).__init__()
-
-        self.nTurbines = nTurbines
-        # Explicitly size input arrays
-        self.add_param('turbineX', val=np.zeros(nTurbines))
-        self.add_param('turbineY', val=np.zeros(nTurbines))
-        self.add_param('rotorDiameter', val=np.zeros(nTurbines))
-
-        self.add_param('boundaryVertices', val=np.zeros((nBoundaries,2)))
-        self.add_param('boundaryNormals', val=np.zeros((nBoundaries,2)))
-
-        self.add_output('spacing_constraint', val=np.zeros((nTurbines-1)*nTurbines/2), pass_by_object=True)
-        self.add_output('boundary_constraint', val=np.zeros(nTurbines), pass_by_object=True)
-
-
-    def solve_nonlinear(self, params, unknowns, resids):
-
-        global nCalls_con
-        nCalls_con += 1
-
-        turbineX = params['turbineX']
-        turbineY = params['turbineY']
-        rotorDiameter = params['rotorDiameter']
-        nTurbines = turbineX.size()
-
-        boundaryVertices = params['boundaryVertices']
-        boundaryNormals = params['boundaryNormals']
-
-
-        dx = np.eye(self.nTurbines)
-        dy = np.zeros((self.nTurbines,self.nTurbines))
-        _,ss_dx,_,bd_dx = position_constraints.constraints_position_dv(turbineX,dx,turbineY,dy,
-                                boundaryVertices,boundaryNormals)
-
-        dx = np.zeros((self.nTurbines,self.nTurbines))
-        dy = np.eye(self.nTurbines)
-        ss,ss_dy,bd,bd_dy = position_constraints.constraints_position_dv(turbineX,dx,turbineY,dy,
-                                boundaryVertices,boundaryNormals)
-
-        bounds = np.zeros(nTurbines)
-        index = np.zeros(nTurbines)
-        for i in range(nTurbines):
-            bounds[i] = np.min(bd[i])
-            index[i] = np.argmin(bd[i])
-
-        self.index = index
-        self.ss_dx = ss_dx
-        self.ss_dy = ss_dy
-        self.bd_dx = bd_dx
-        self.bd_dy = bd_dy
-
-        unknowns['spacing_constraint'] = ss-(2.*rotorDiameter[0])**2
-        unknowns['boundary_constraint'] = bounds
-
-    def linearize(self, params, unknowns, resids):
-
-        nTurbines = params['turbineX'].size()
-
-        # initialize Jacobian dict
-        J = {}
-
-        # populate Jacobian dict
-        J[('spacing_constraint', 'turbineX')] = self.ss_dx.T
-        J[('spacing_constraint', 'turbineY')] = self.ss_dy.T
-
-        db_dx = np.zeros((self.nTurbines,self.nTurbines))
-        db_dy = np.zeros((self.nTurbines,self.nTurbines))
-        for i in range(nTurbines):
-            db_dx[i][i] = self.bd_dx[i][i][self.index[i]]
-            db_dy[i][i] = self.bd_dy[i][i][self.index[i]]
-        J[('boundary_constraint','turbineX')] = db_dx
-        J[('boundary_constraint','turbineY')] = db_dy
-
-        return J
+# class PositionConstraintComp(om.ExplicitComponent):
+#     """ Calculates spacing and boundary constraints
+#         Written by PJ Stanley, 2019
+#     """
+#
+#     def setup(self):
+#
+#         super(PositionConstraintComp, self).__init__()
+#
+#         self.nTurbines = nTurbines
+#         # Explicitly size input arrays
+#         self.add_input('turbineX', val=np.zeros(nTurbines))
+#         self.add_input('turbineY', val=np.zeros(nTurbines))
+#         self.add_input('rotorDiameter', val=np.zeros(nTurbines))
+#
+#         self.add_input('boundaryVertices', val=np.zeros((nBoundaries,2)))
+#         self.add_input('boundaryNormals', val=np.zeros((nBoundaries,2)))
+#
+#         self.add_output('spacing_constraint', val=np.zeros((nTurbines-1)*nTurbines/2))
+#         self.add_output('boundary_constraint', val=np.zeros(nTurbines))
+#
+#
+#     def compute(self, inputs, outputs, resids):
+#
+#         global nCalls_con
+#         nCalls_con += 1
+#
+#         turbineX = params['turbineX']
+#         turbineY = params['turbineY']
+#         rotorDiameter = params['rotorDiameter']
+#         nTurbines = turbineX.size()
+#
+#         boundaryVertices = params['boundaryVertices']
+#         boundaryNormals = params['boundaryNormals']
+#
+#
+#         dx = np.eye(self.nTurbines)
+#         dy = np.zeros((self.nTurbines,self.nTurbines))
+#         _,ss_dx,_,bd_dx = position_constraints.constraints_position_dv(turbineX,dx,turbineY,dy,
+#                                 boundaryVertices,boundaryNormals)
+#
+#         dx = np.zeros((self.nTurbines,self.nTurbines))
+#         dy = np.eye(self.nTurbines)
+#         ss,ss_dy,bd,bd_dy = position_constraints.constraints_position_dv(turbineX,dx,turbineY,dy,
+#                                 boundaryVertices,boundaryNormals)
+#
+#         bounds = np.zeros(nTurbines)
+#         index = np.zeros(nTurbines)
+#         for i in range(nTurbines):
+#             bounds[i] = np.min(bd[i])
+#             index[i] = np.argmin(bd[i])
+#
+#         self.index = index
+#         self.ss_dx = ss_dx
+#         self.ss_dy = ss_dy
+#         self.bd_dx = bd_dx
+#         self.bd_dy = bd_dy
+#
+#         unknowns['spacing_constraint'] = ss-(2.*rotorDiameter[0])**2
+#         unknowns['boundary_constraint'] = bounds
+#
+#     def linearize(self, params, unknowns, resids):
+#
+#         nTurbines = params['turbineX'].size()
+#
+#         # initialize Jacobian dict
+#         J = {}
+#
+#         # populate Jacobian dict
+#         J[('spacing_constraint', 'turbineX')] = self.ss_dx.T
+#         J[('spacing_constraint', 'turbineY')] = self.ss_dy.T
+#
+#         db_dx = np.zeros((self.nTurbines,self.nTurbines))
+#         db_dy = np.zeros((self.nTurbines,self.nTurbines))
+#         for i in range(nTurbines):
+#             db_dx[i][i] = self.bd_dx[i][i][self.index[i]]
+#             db_dy[i][i] = self.bd_dy[i][i][self.index[i]]
+#         J[('boundary_constraint','turbineX')] = db_dx
+#         J[('boundary_constraint','turbineY')] = db_dy
+#
+#         return J
 
 class SpacingComp(om.ExplicitComponent):
     """
@@ -871,7 +871,7 @@ class BoundaryComp(om.ExplicitComponent):
 
             # calculate distance from each point to each face
             outputs['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY,
-                                                               params['boundaryVertices'], params['boundaryNormals'])
+                                                               discrete_inputs['boundaryVertices'], discrete_inputs['boundaryNormals'])
         else:
             xc = discrete_inputs['boundary_center'][0]
             yc = discrete_inputs['boundary_center'][1]
@@ -1526,16 +1526,16 @@ if __name__ == "__main__":
     tic = time.time()
     s2 = spacing_2loops(x, y)
     toc = time.time()
-    print 'spacing for two loops:', s2
-    print 'time for two loops:', toc-tic
+    print('spacing for two loops:', s2)
+    print('time for two loops:', toc-tic)
 
     tic = time.time()
     s1 = spacing_1loop(x, y)
     toc = time.time()
-    print 'spacing for one loops:', s1
-    print 'time for one loops:', toc - tic
+    print('spacing for one loops:', s1)
+    print('time for one loops:', toc - tic)
 
-    print 'diff: ', s2-s1
+    print('diff: ', s2-s1)
 
     # import matplotlib.pyplot as plt
     # import os
