@@ -21,6 +21,7 @@ def add_gauss_params_IndepVarComps(openmdao_group, nRotorPoints=1):
     # ivc.add_discrete_output('model_params:spread_angle', val=5.84, units='deg')
 
     # params for Bastankhah model with yaw
+<<<<<<< HEAD
     ivc.add_discrete_output('model_params:ky', 0.022)
     ivc.add_discrete_output('model_params:kz', 0.022)
     ivc.add_discrete_output('model_params:alpha', 2.32)
@@ -54,7 +55,7 @@ def add_gauss_params_IndepVarComps(openmdao_group, nRotorPoints=1):
     ivc.add_discrete_output('model_params:sm_smoothing', val=700.0,
                             desc='adjust degree of smoothing for TI smooth max')
 
-    ivc.add_discrete_output('model_params:exp_rate_multiplier', val=1.0,
+    ivc.add_discrete_output('model_params:wec_spreading_angle', val=0.0,
                             desc='adjust spreading angle of the wake')
 
     # ivc.add_discrete_output('model_params:yaw_mode', val='bastankhah')
