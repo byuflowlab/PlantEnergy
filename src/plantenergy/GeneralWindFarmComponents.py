@@ -863,9 +863,9 @@ class BoundaryComp(om.ExplicitComponent):
 
         if self.type == 'polygon':
             # put locations in correct arrangement for calculations
-            locations = np.zeros([nTurbines, 2], dtype=inputs._data.dtype)
-            for i in range(0, nTurbines):
-                locations[i] = np.array([turbineX[i], turbineY[i]], dtype=inputs._data.dtype)
+            # locations = np.zeros([nTurbines, 2], dtype=inputs._data.dtype)
+            # for i in range(0, nTurbines):
+            #     locations[i] = np.array([turbineX[i], turbineY[i]], dtype=inputs._data.dtype)
 
             # print("in comp, locs are: ".format(locations))
 
@@ -873,10 +873,17 @@ class BoundaryComp(om.ExplicitComponent):
             outputs['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY,
                                                                discrete_inputs['boundaryVertices'], discrete_inputs['boundaryNormals'])
         else:
-            xc = discrete_inputs['boundary_center'][0]
-            yc = discrete_inputs['boundary_center'][1]
-            r = discrete_inputs['boundary_radius']
-            outputs['boundaryDistances'][:, 0] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
+            # xc = discrete_inputs['boundary_center'][0]
+            # yc = discrete_inputs['boundary_center'][1]
+            # r = discrete_inputs['boundary_radius']
+
+            # outputs['boundaryDistances'][:, 0] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
+            boundaryVerticy = np.zeros((1, 2))
+            boundaryRadius =  np.zeros((1, 2))
+            boundaryVerticy[:,0] = discrete_inputs['boundary_center'][0]
+            boundaryVerticy[:,1] = discrete_inputs['boundary_center'][1]
+            boundaryRadius[:, :] = discrete_inputs['boundary_radius']
+            outputs['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY, boundaryRadius, boundaryVerticy)
 
     def compute_partials(self, inputs, partials, discrete_inputs=None):
         opt = self.options
@@ -906,6 +913,18 @@ class BoundaryComp(om.ExplicitComponent):
                     dfaceDistance_dx[i*nVertices+j, i] = np.vdot(ddistanceVec_dx, unit_normals[j])
                     dfaceDistance_dy[i*nVertices+j, i] = np.vdot(ddistanceVec_dy, unit_normals[j])
 
+            # turbineXd = np.eye(nTurbines)
+            # turbineYd = np.eye(nTurbines)
+            #
+            # _, dfaceDistance_dx = position_constraints.boundary_distances_dv(inputs['turbineX'], turbineXd,
+            #                                                               inputs['turbineY'], np.zeros((nTurbines,nTurbines)),
+            #                                                               discrete_inputs['boundaryVertices'],
+            #                                                               discrete_inputs['boundaryNormals'])
+            # _, dfaceDistance_dy = position_constraints.boundary_distances_dv(inputs['turbineX'], np.zeros((nTurbines,nTurbines)),
+            #                                                               inputs['turbineY'], turbineYd,
+            #                                                               discrete_inputs['boundaryVertices'],
+            #                                                               discrete_inputs['boundaryNormals'])
+            # dfaceDistance_dx = np.transpose(np.reshape(dfaceDistance_dx, (nTurbines, nVertices * nTurbines)))
         else:
             turbineX = inputs['turbineX']
             turbineY = inputs['turbineY']
@@ -916,8 +935,9 @@ class BoundaryComp(om.ExplicitComponent):
             dfaceDistance_dy = - 2. * (turbineY - yc)
 
         # return Jacobian dict
-        partials['boundaryDistances', 'turbineX'] = dfaceDistance_dx
-        partials['boundaryDistances', 'turbineY'] = dfaceDistance_dy
+
+        partials['boundaryDistances', 'turbineX'] = (dfaceDistance_dx)
+        partials['boundaryDistances', 'turbineY'] = (dfaceDistance_dy)
 
 
 def calculate_boundary(vertices):

@@ -62,8 +62,8 @@ subroutine boundary_distances(nTurbines, nBoundaries, turbineX, turbineY, bounda
 
     if (nBoundaries .eq. 1) then
         do i = 1, nTurbines
-            R = sqrt((turbineX(i)-boundaryNormals(1,1))**2+(turbineY(i)-boundaryNormals(1,2))**2)
-            boundaryDistances(i,1) = boundaryVertices(1,1)-R
+            R = (turbineX(i)-boundaryNormals(1,1))**2+(turbineY(i)-boundaryNormals(1,2))**2
+            boundaryDistances(i,1) = (boundaryVertices(1,1))**2-R
         end do
     else
         do i = 1, nTurbines

@@ -163,7 +163,7 @@ class OptAEP(om.Group):
             bv_ivc.add_discrete_output('boundary_radius', val=1000.,
                                        desc='radius of wind farm boundary (m)')
             bv_ivc.add_discrete_output('boundary_center', val=np.array([0., 0.]),
-                                         desc='x and y positions of circular wind farm boundary center (m)')
+                                        desc='x and y positions of circular wind farm boundary center (m)')
         else:
             warnings.warn("nVertices has been set to zero. No boundary constraints can be used unless nVertices > 0",
                                 RuntimeWarning)
