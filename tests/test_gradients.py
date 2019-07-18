@@ -1,5 +1,5 @@
 from __future__ import print_function
-import cPickle as pickle
+import pickle
 import unittest
 
 from scipy.interpolate import UnivariateSpline
@@ -198,7 +198,7 @@ class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
         prob.set_solver_print(level=-1)
 
         # assign values to constant inputs (not design variables)
-        NREL5MWCPCT = pickle.load(open('./input_files/NREL5MWCPCT_smooth_dict.p'))
+        NREL5MWCPCT = pickle.load(open('./input_files/NREL5MWCPCT_smooth_dict.p', 'rb'), encoding='latin1')
         prob['turbineX'] = turbineX
         prob['turbineY'] = turbineY
         prob['yaw0'] = yaw
@@ -497,7 +497,7 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
 
         filename = "./input_files/NREL5MWCPCT_dict.p"
 
-        data = pickle.load(open(filename, "rb"))
+        data = pickle.load(open(filename, "rb"), encoding='latin1')
         cpct_data = np.zeros([data['wind_speed'].size, 3])
         cpct_data[:, 0] = data['wind_speed']
         cpct_data[:, 1] = data['CP']
@@ -1032,8 +1032,7 @@ class GradientTestsCpArray(unittest.TestCase):
         wind_frequency = np.random.random()    # probability of wind in given direction
 
         # load cp_curve
-        import cPickle as pickle
-        data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "r"))
+        data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "rb"), encoding='latin1')
 
         cp_curve_wind_speed = data["wind_speed"]
         cp_curve_cp = data["CP"]
@@ -1106,8 +1105,7 @@ class GradientTestsCpSpline(unittest.TestCase):
         wind_frequency = np.random.random()    # probability of wind in given direction
 
         # load cp_curve
-        import cPickle as pickle
-        data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "r"))
+        data = pickle.load(open("./input_files/NREL5MWCPCT_dict.p", "rb"), encoding='latin1')
 
         cp_curve_wind_speed = data["wind_speed"]
         cp_curve_cp = data["CP"]
@@ -1181,7 +1179,7 @@ class GradientTestsCtCpRotor(unittest.TestCase):
         wind_frequency = np.random.random()    # probability of wind in given direction
 
 
-        NREL5MWCPCT = pickle.load(open('./input_files/NREL5MWCPCT_dict.p'))
+        NREL5MWCPCT = pickle.load(open('./input_files/NREL5MWCPCT_dict.p', 'rb'), encoding='latin1')
         datasize = NREL5MWCPCT['CP'].size
 
         # set up problem

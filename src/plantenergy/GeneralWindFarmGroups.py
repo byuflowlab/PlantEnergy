@@ -314,7 +314,7 @@ class AEPGroup(om.Group):
         pg = self.add_subsystem('all_directions', om.ParallelGroup(), promotes=['*'])
 
         if use_rotor_components:
-            for direction_id in np.arange(0, nDirections):
+            for direction_id in np.arange(0, nDirections, dtype=int):
                 # print('assigning direction group %i'.format(direction_id))
 
                 if (nSamples == 0):
@@ -330,13 +330,13 @@ class AEPGroup(om.Group):
                                     'wtPower%i' % direction_id, 'dir_power%i' % direction_id, 'wsArray%i' % direction_id]
 
                 pg.add_subsystem('direction_group%i' % direction_id,
-                                 DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
+                                 DirectionGroup(nTurbines=nTurbines, direction_id=int(direction_id),
                                                 use_rotor_components=use_rotor_components, datasize=datasize,
                                                 differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples,
                                                 wake_model=wake_model, wake_model_options=wake_model_options, cp_points=cp_points),
                                  promotes=dir_promotes)
         else:
-            for direction_id in np.arange(0, nDirections):
+            for direction_id in np.arange(0, nDirections, dtype=int):
                 # print('assigning direction group %i'.format(direction_id))
 
                 if (nSamples == 0):
@@ -354,7 +354,7 @@ class AEPGroup(om.Group):
                                     'cp_curve_wind_speed', 'cut_out_speed', 'rated_wind_speed', 'use_power_curve_definition']
 
                 pg.add_subsystem('direction_group%i' % direction_id,
-                                 DirectionGroup(nTurbines=nTurbines, direction_id=direction_id,
+                                 DirectionGroup(nTurbines=nTurbines, direction_id=int(direction_id),
                                                 use_rotor_components=use_rotor_components, datasize=datasize,
                                                 differentiable=differentiable, add_IdepVarComps=False, nSamples=nSamples,
                                                 wake_model=wake_model, wake_model_options=wake_model_options, cp_points=cp_points,
@@ -370,7 +370,7 @@ class AEPGroup(om.Group):
         # connect components
         self.connect('windDirections', 'windDirectionsDeMUX.r')
         self.connect('windSpeeds', 'windSpeedsDeMUX.r')
-        for direction_id in np.arange(0, nDirections):
+        for direction_id in np.arange(0, nDirections, dtype=int):
             dir_ivc.add_output('yaw%i' % direction_id, np.zeros(nTurbines), units='deg')
             self.connect('windDirectionsDeMUX.r_%i' % direction_id, 'direction_group%i.wind_direction' % direction_id)
             self.connect('windSpeedsDeMUX.r_%i' % direction_id, 'direction_group%i.wind_speed' % direction_id)
