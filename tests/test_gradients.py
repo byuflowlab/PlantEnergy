@@ -1439,9 +1439,9 @@ class GradientTestsConstraintComponents(unittest.TestCase):
 
         nTurbines = 38
         self.rtol = 1E-5
-        self.atol = 1E-3
+        self.atol = 1E-5
 
-        np.random.seed(seed=10)
+        np.random.seed(seed=11)
 
         turbineX = np.random.rand(nTurbines)*3000.
         turbineY = np.random.rand(nTurbines)*3000.
@@ -1469,7 +1469,7 @@ class GradientTestsConstraintComponents(unittest.TestCase):
         generatorEfficiency = np.ones(nTurbines)*np.random.random()
         yaw = np.random.rand(nTurbines)*60. - 30.
 
-        # Define flow properties
+        # Define flow propertiesR
         nDirections = 5
         windSpeeds = np.random.rand(nDirections)*20        # m/s
         air_density = 1.1716    # kg/m^3
@@ -1497,11 +1497,11 @@ class GradientTestsConstraintComponents(unittest.TestCase):
             # set up optimizer
             # prob.driver = pyOptSparseDriver()
             # prob.driver.options['optimizer'] = 'SNOPT'
-            prob.model.add_objective('obj', scaler=1E-3)
+            prob.model.add_objective('obj', scaler=1)
 
             # select design variables
-            prob.model.add_design_var('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1E3)
-            prob.model.add_design_var('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1E3)
+            prob.model.add_design_var('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1)
+            prob.model.add_design_var('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1)
             # prob.model.add_design_var('hubHeight', lower=np.ones(nTurbines)*0.0, upper=np.ones(nTurbines)*120., scaler=1.0)
             for direction_id in range(0, windDirections.size):
                 prob.model.add_design_var('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1.0)
@@ -1509,9 +1509,9 @@ class GradientTestsConstraintComponents(unittest.TestCase):
             # add constraints
             prob.model.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
             if prob is prob_polygon:
-                prob.model.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1E3)
+                prob.model.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1)
             elif prob is prob_circle:
-                prob.model.add_constraint('boundaryDistances', lower=np.zeros(1 * nTurbines), scaler=1E3)
+                prob.model.add_constraint('boundaryDistances', lower=np.zeros(1 * nTurbines), scaler=1)
 
             # initialize problem
             prob.setup()
@@ -1543,26 +1543,28 @@ class GradientTestsConstraintComponents(unittest.TestCase):
             prob.run_model()
 
         # pass results to self for use with unit test
-        self.J = prob_polygon.check_totals(out_stream=None, step=1e-4)
-        self.J_circle = prob_circle.check_totals(out_stream=None, step=1e-4)
+        self.Jp = prob_polygon.check_partials(out_stream=None, step=1e-5)
+        self.Jt = prob_polygon.check_totals(out_stream=None, step=1e-5)
+        self.Jp_circle = prob_circle.check_partials(out_stream=None, step=1e-5)
+        self.Jt_circle = prob_circle.check_totals(out_stream=None, step=1e-5)
         self.nDirections = nDirections
 
-        # print(self.J)
+        print(self.Jp)
 
     def testSpacingCon(self):
 
-        np.testing.assert_allclose(self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.J[('spacing_con.sc', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.Jt[('spacing_con.sc', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.Jt[('spacing_con.sc', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.Jt[('spacing_con.sc', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.Jt[('spacing_con.sc', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
 
     def testBoundaryConPolygon(self):
 
-        np.testing.assert_allclose(self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.J[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.Jt[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.Jt[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.Jt[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.Jt[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
 
     def testBoundaryConCircle(self):
 
-        np.testing.assert_allclose(self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
-        np.testing.assert_allclose(self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.J_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.Jt_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fwd'], self.Jt_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineX')]['J_fd'], self.rtol, self.atol)
+        np.testing.assert_allclose(self.Jt_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fwd'], self.Jt_circle[('boundary_con.boundaryDistances', 'AEPgroup.desvars.turbineY')]['J_fd'], self.rtol, self.atol)
 
 
 # TODO create gradient tests for all components
