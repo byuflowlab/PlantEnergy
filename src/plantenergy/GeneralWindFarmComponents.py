@@ -760,20 +760,35 @@ class SpacingComp(om.ExplicitComponent):
                        desc='y coordinates of turbines in wind dir. ref. frame')
 
         # Explicitly size output array
-        self.add_output('wtSeparationSquared', val=np.zeros(int(nTurbines*(nTurbines-1)/2)),
+        self.add_output('wtSeparationSquared', val=np.zeros(int(nTurbines*(nTurbines-1.)/2.)),
                         desc='spacing of all turbines in the wind farm')
 
         # Derivatives
         self.declare_partials(of='*', wrt='*')
 
     def compute(self, inputs, outputs):
+
         nTurbines = self.options['nTurbines']
 
         turbineX = inputs['turbineX']
         turbineY = inputs['turbineY']
-        separation_squared = position_constraints.turbine_spacing_squared(turbineX, turbineY)
+        separation_squared = np.zeros(int((nTurbines - 1.) * nTurbines / 2.), dtype=inputs._data.dtype)
+
+        k = 0
+        for i in range(0, nTurbines):
+            for j in range(i + 1, nTurbines):
+                separation_squared[k] = (turbineX[j] - turbineX[i]) ** 2 + (turbineY[j] - turbineY[i]) ** 2
+                k += 1
 
         outputs['wtSeparationSquared'] = separation_squared
+
+        # nTurbines = self.options['nTurbines']
+        #
+        # turbineX = inputs['turbineX']
+        # turbineY = inputs['turbineY']
+        # separation_squared = position_constraints.turbine_spacing_squared(turbineX, turbineY)
+        #
+        # outputs['wtSeparationSquared'] = separation_squared
 
     def compute_partials(self, inputs, partials):
         nTurbines = self.options['nTurbines']
@@ -782,25 +797,55 @@ class SpacingComp(om.ExplicitComponent):
         turbineX = inputs['turbineX']
         turbineY = inputs['turbineY']
 
-        # get number of turbines
-        nTurbines = turbineX.size
+        # initialize gradient calculation array
+        dS = np.zeros((int((nTurbines - 1.) * nTurbines / 2.), 2 * nTurbines), dtype=inputs._data.dtype)
 
-        turbineXd = np.eye(nTurbines)
-        turbineYd = np.zeros((nTurbines, nTurbines))
+        # set turbine pair counter to zero
+        k = 0
 
-        _, separation_squareddx = \
-            position_constraints.turbine_spacing_squared_dv(turbineX, turbineXd, turbineY, turbineYd)
-
-        turbineXd = np.zeros((nTurbines, nTurbines))
-        turbineYd = np.eye(nTurbines)
-
-        _, separation_squareddy = \
-            position_constraints.turbine_spacing_squared_dv(turbineX, turbineXd, turbineY, turbineYd)
+        # calculate the gradient of the distance between each pair of turbines w.r.t. turbineX and turbineY
+        for i in range(0, nTurbines):
+            for j in range(i + 1, nTurbines):
+                # separation wrt Xj
+                dS[k, j] = 2 * (turbineX[j] - turbineX[i])
+                # separation wrt Xi
+                dS[k, i] = -2 * (turbineX[j] - turbineX[i])
+                # separation wrt Yj
+                dS[k, j + nTurbines] = 2 * (turbineY[j] - turbineY[i])
+                # separation wrt Yi
+                dS[k, i + nTurbines] = -2 * (turbineY[j] - turbineY[i])
+                # increment turbine pair counter
+                k += 1
 
         # populate Jacobian dict
+        partials['wtSeparationSquared', 'turbineX'] = dS[:, :nTurbines]
+        partials['wtSeparationSquared', 'turbineY'] = dS[:, nTurbines:]
 
-        partials['wtSeparationSquared', 'turbineX'] = np.transpose(separation_squareddx)
-        partials['wtSeparationSquared', 'turbineY'] = np.transpose(separation_squareddy)
+        # nTurbines = self.options['nTurbines']
+        #
+        # # obtain necessary inputs
+        # turbineX = inputs['turbineX']
+        # turbineY = inputs['turbineY']
+        #
+        # # get number of turbines
+        # nTurbines = turbineX.size
+        #
+        # turbineXd = np.eye(nTurbines)
+        # turbineYd = np.zeros((nTurbines, nTurbines))
+        #
+        # _, separation_squareddx = \
+        #     position_constraints.turbine_spacing_squared_dv(turbineX, turbineXd, turbineY, turbineYd)
+        #
+        # turbineXd = np.zeros((nTurbines, nTurbines))
+        # turbineYd = np.eye(nTurbines)
+        #
+        # _, separation_squareddy = \
+        #     position_constraints.turbine_spacing_squared_dv(turbineX, turbineXd, turbineY, turbineYd)
+        #
+        # # populate Jacobian dict
+        #
+        # partials['wtSeparationSquared', 'turbineX'] = np.transpose(separation_squareddx)
+        # partials['wtSeparationSquared', 'turbineY'] = np.transpose(separation_squareddy)
 
 class BoundaryComp(om.ExplicitComponent):
 
@@ -856,6 +901,7 @@ class BoundaryComp(om.ExplicitComponent):
             self.declare_partials(of='*', wrt='*', rows=row_col, cols=row_col)
 
     def compute(self, inputs, outputs, discrete_inputs=None, discrete_outputs=None):
+
         nTurbines = self.options['nTurbines']
 
         turbineX = inputs['turbineX']
@@ -863,27 +909,52 @@ class BoundaryComp(om.ExplicitComponent):
 
         if self.type == 'polygon':
             # put locations in correct arrangement for calculations
-            # locations = np.zeros([nTurbines, 2], dtype=inputs._data.dtype)
-            # for i in range(0, nTurbines):
-            #     locations[i] = np.array([turbineX[i], turbineY[i]], dtype=inputs._data.dtype)
+            locations = np.zeros([nTurbines, 2], dtype=inputs._data.dtype)
+            for i in range(0, nTurbines):
+                locations[i] = np.array([turbineX[i], turbineY[i]], dtype=inputs._data.dtype)
 
             # print("in comp, locs are: ".format(locations))
 
             # calculate distance from each point to each face
-            outputs['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY,
-                                                               discrete_inputs['boundaryVertices'], discrete_inputs['boundaryNormals'])
-        else:
-            # xc = discrete_inputs['boundary_center'][0]
-            # yc = discrete_inputs['boundary_center'][1]
-            # r = discrete_inputs['boundary_radius']
+            outputs['boundaryDistances'] = calculate_distance(locations,
+                                                              discrete_inputs['boundaryVertices'],
+                                                              discrete_inputs['boundaryNormals'],
+                                                              dtype=inputs._data.dtype)
 
-            # outputs['boundaryDistances'][:, 0] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
-            boundaryVerticy = np.zeros((1, 2))
-            boundaryRadius =  np.zeros((1, 2))
-            boundaryVerticy[:,0] = discrete_inputs['boundary_center'][0]
-            boundaryVerticy[:,1] = discrete_inputs['boundary_center'][1]
-            boundaryRadius[:, :] = discrete_inputs['boundary_radius']
-            outputs['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY, boundaryRadius, boundaryVerticy)
+        else:
+            xc = discrete_inputs['boundary_center'][0]
+            yc = discrete_inputs['boundary_center'][1]
+            r = discrete_inputs['boundary_radius']
+            outputs['boundaryDistances'][:, 0] = r ** 2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
+
+        # nTurbines = self.options['nTurbines']
+        #
+        # turbineX = inputs['turbineX']
+        # turbineY = inputs['turbineY']
+        #
+        # if self.type == 'polygon':
+        #     # put locations in correct arrangement for calculations
+        #     # locations = np.zeros([nTurbines, 2], dtype=inputs._data.dtype)
+        #     # for i in range(0, nTurbines):
+        #     #     locations[i] = np.array([turbineX[i], turbineY[i]], dtype=inputs._data.dtype)
+        #
+        #     # print("in comp, locs are: ".format(locations))
+        #
+        #     # calculate distance from each point to each face
+        #     outputs['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY,
+        #                                                        discrete_inputs['boundaryVertices'], discrete_inputs['boundaryNormals'])
+        # else:
+        #     # xc = discrete_inputs['boundary_center'][0]
+        #     # yc = discrete_inputs['boundary_center'][1]
+        #     # r = discrete_inputs['boundary_radius']
+        #
+        #     # outputs['boundaryDistances'][:, 0] = r**2 - (np.power((turbineX - xc), 2) + np.power((turbineY - yc), 2))
+        #     boundaryVerticy = np.zeros((1, 2))
+        #     boundaryRadius =  np.zeros((1, 2))
+        #     boundaryVerticy[:,0] = discrete_inputs['boundary_center'][0]
+        #     boundaryVerticy[:,1] = discrete_inputs['boundary_center'][1]
+        #     boundaryRadius[:, :] = discrete_inputs['boundary_radius']
+        #     outputs['boundaryDistances'] = position_constraints.boundary_distances(turbineX, turbineY, boundaryRadius, boundaryVerticy)
 
     def compute_partials(self, inputs, partials, discrete_inputs=None):
         opt = self.options
@@ -894,37 +965,24 @@ class BoundaryComp(om.ExplicitComponent):
             unit_normals = discrete_inputs['boundaryNormals']
 
             # initialize array to hold distances from each point to each face
-            dfaceDistance_dx = np.zeros([int(nTurbines*nVertices), nTurbines], dtype=inputs._data.dtype)
-            dfaceDistance_dy = np.zeros([int(nTurbines*nVertices), nTurbines], dtype=inputs._data.dtype)
+            dfaceDistance_dx = np.zeros([int(nTurbines * nVertices), nTurbines], dtype=inputs._data.dtype)
+            dfaceDistance_dy = np.zeros([int(nTurbines * nVertices), nTurbines], dtype=inputs._data.dtype)
 
             for i in range(0, nTurbines):
                 # determine if point is inside or outside of each face, and distance from each face
                 for j in range(0, nVertices):
-
                     # define the derivative vectors from the point of interest to the first point of the face
                     dpa_dx = np.array([-1.0, 0.0], dtype=inputs._data.dtype)
                     dpa_dy = np.array([0.0, -1.0], dtype=inputs._data.dtype)
 
                     # find perpendicular distance derivatives from point to current surface (vector projection)
-                    ddistanceVec_dx = np.vdot(dpa_dx, unit_normals[j])*unit_normals[j]
-                    ddistanceVec_dy = np.vdot(dpa_dy, unit_normals[j])*unit_normals[j]
+                    ddistanceVec_dx = np.vdot(dpa_dx, unit_normals[j]) * unit_normals[j]
+                    ddistanceVec_dy = np.vdot(dpa_dy, unit_normals[j]) * unit_normals[j]
 
                     # calculate derivatives for the sign of perpendicular distance from point to current face
-                    dfaceDistance_dx[i*nVertices+j, i] = np.vdot(ddistanceVec_dx, unit_normals[j])
-                    dfaceDistance_dy[i*nVertices+j, i] = np.vdot(ddistanceVec_dy, unit_normals[j])
+                    dfaceDistance_dx[i * nVertices + j, i] = np.vdot(ddistanceVec_dx, unit_normals[j])
+                    dfaceDistance_dy[i * nVertices + j, i] = np.vdot(ddistanceVec_dy, unit_normals[j])
 
-            # turbineXd = np.eye(nTurbines)
-            # turbineYd = np.eye(nTurbines)
-            #
-            # _, dfaceDistance_dx = position_constraints.boundary_distances_dv(inputs['turbineX'], turbineXd,
-            #                                                               inputs['turbineY'], np.zeros((nTurbines,nTurbines)),
-            #                                                               discrete_inputs['boundaryVertices'],
-            #                                                               discrete_inputs['boundaryNormals'])
-            # _, dfaceDistance_dy = position_constraints.boundary_distances_dv(inputs['turbineX'], np.zeros((nTurbines,nTurbines)),
-            #                                                               inputs['turbineY'], turbineYd,
-            #                                                               discrete_inputs['boundaryVertices'],
-            #                                                               discrete_inputs['boundaryNormals'])
-            # dfaceDistance_dx = np.transpose(np.reshape(dfaceDistance_dx, (nTurbines, nVertices * nTurbines)))
         else:
             turbineX = inputs['turbineX']
             turbineY = inputs['turbineY']
@@ -935,9 +993,61 @@ class BoundaryComp(om.ExplicitComponent):
             dfaceDistance_dy = - 2. * (turbineY - yc)
 
         # return Jacobian dict
+        partials['boundaryDistances', 'turbineX'] = dfaceDistance_dx
+        partials['boundaryDistances', 'turbineY'] = dfaceDistance_dy
 
-        partials['boundaryDistances', 'turbineX'] = (dfaceDistance_dx)
-        partials['boundaryDistances', 'turbineY'] = (dfaceDistance_dy)
+        # opt = self.options
+        # nTurbines = opt['nTurbines']
+        # nVertices = opt['nVertices']
+        #
+        # if self.type == 'polygon':
+        #     unit_normals = discrete_inputs['boundaryNormals']
+        #
+        #     # initialize array to hold distances from each point to each face
+        #     dfaceDistance_dx = np.zeros([int(nTurbines*nVertices), nTurbines], dtype=inputs._data.dtype)
+        #     dfaceDistance_dy = np.zeros([int(nTurbines*nVertices), nTurbines], dtype=inputs._data.dtype)
+        #
+        #     for i in range(0, nTurbines):
+        #         # determine if point is inside or outside of each face, and distance from each face
+        #         for j in range(0, nVertices):
+        #
+        #             # define the derivative vectors from the point of interest to the first point of the face
+        #             dpa_dx = np.array([-1.0, 0.0], dtype=inputs._data.dtype)
+        #             dpa_dy = np.array([0.0, -1.0], dtype=inputs._data.dtype)
+        #
+        #             # find perpendicular distance derivatives from point to current surface (vector projection)
+        #             ddistanceVec_dx = np.vdot(dpa_dx, unit_normals[j])*unit_normals[j]
+        #             ddistanceVec_dy = np.vdot(dpa_dy, unit_normals[j])*unit_normals[j]
+        #
+        #             # calculate derivatives for the sign of perpendicular distance from point to current face
+        #             dfaceDistance_dx[i*nVertices+j, i] = np.vdot(ddistanceVec_dx, unit_normals[j])
+        #             dfaceDistance_dy[i*nVertices+j, i] = np.vdot(ddistanceVec_dy, unit_normals[j])
+        #
+        #     # turbineXd = np.eye(nTurbines)
+        #     # turbineYd = np.eye(nTurbines)
+        #     #
+        #     # _, dfaceDistance_dx = position_constraints.boundary_distances_dv(inputs['turbineX'], turbineXd,
+        #     #                                                               inputs['turbineY'], np.zeros((nTurbines,nTurbines)),
+        #     #                                                               discrete_inputs['boundaryVertices'],
+        #     #                                                               discrete_inputs['boundaryNormals'])
+        #     # _, dfaceDistance_dy = position_constraints.boundary_distances_dv(inputs['turbineX'], np.zeros((nTurbines,nTurbines)),
+        #     #                                                               inputs['turbineY'], turbineYd,
+        #     #                                                               discrete_inputs['boundaryVertices'],
+        #     #                                                               discrete_inputs['boundaryNormals'])
+        #     # dfaceDistance_dx = np.transpose(np.reshape(dfaceDistance_dx, (nTurbines, nVertices * nTurbines)))
+        # else:
+        #     turbineX = inputs['turbineX']
+        #     turbineY = inputs['turbineY']
+        #     xc = discrete_inputs['boundary_center'][0]
+        #     yc = discrete_inputs['boundary_center'][1]
+        #
+        #     dfaceDistance_dx = - 2. * (turbineX - xc)
+        #     dfaceDistance_dy = - 2. * (turbineY - yc)
+        #
+        # # return Jacobian dict
+        #
+        # partials['boundaryDistances', 'turbineX'] = (dfaceDistance_dx)
+        # partials['boundaryDistances', 'turbineY'] = (dfaceDistance_dy)
 
 
 def calculate_boundary(vertices):

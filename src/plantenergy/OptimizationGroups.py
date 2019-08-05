@@ -157,13 +157,15 @@ class OptAEP(om.Group):
 
         if nVertices > 0:
             # add component that enforces a convex hull wind farm boundary
-            bv_ivc = self.add_subsystem('bv', om.IndepVarComp(), promotes=['*'])
+            if nVertices == 1:
+                bv_ivc = self.add_subsystem('bv', om.IndepVarComp(), promotes=['*'])
             self.add_subsystem('boundary_con', BoundaryComp(nVertices=nVertices, nTurbines=nTurbines), promotes=['*'])
 
-            bv_ivc.add_discrete_output('boundary_radius', val=1000.,
-                                       desc='radius of wind farm boundary (m)')
-            bv_ivc.add_discrete_output('boundary_center', val=np.array([0., 0.]),
-                                        desc='x and y positions of circular wind farm boundary center (m)')
+            if nVertices == 1:
+                bv_ivc.add_discrete_output('boundary_radius', val=1000.,
+                                           desc='radius of wind farm boundary (m)')
+                bv_ivc.add_discrete_output('boundary_center', val=np.array([0., 0.]),
+                                            desc='x and y positions of circular wind farm boundary center (m)')
         else:
             warnings.warn("nVertices has been set to zero. No boundary constraints can be used unless nVertices > 0",
                                 RuntimeWarning)
