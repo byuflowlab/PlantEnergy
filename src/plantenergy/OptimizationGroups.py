@@ -176,14 +176,15 @@ class OptAEP(om.Group):
         #          pass_by_obj=True, desc='minimum allowable spacing between wind turbines'), promotes=['*'])
 
         self.add_subsystem('spacing_con', om.ExecComp('sc = wtSeparationSquared-(minSpacing*rotorDiameter[0])**2',
-                                                      minSpacing=np.array([minSpacing]), rotorDiameter=np.zeros(nTurbines),
+                                                      minSpacing=np.array([minSpacing]),
+                                                      rotorDiameter={'value': np.zeros(nTurbines), 'units': 'm'},
                                                       sc=np.zeros(int(((nTurbines-1.)*nTurbines/2.))),
                                                       wtSeparationSquared=np.zeros(int(((nTurbines-1.)*nTurbines/2.)))),
                            promotes=['*'])
 
 
         # add objective component
-        self.add_subsystem('obj_comp', om.ExecComp('obj = -1.*AEP', AEP={'value': 0.0, 'units': 'kw*h'}), promotes=['*'])
+        self.add_subsystem('obj_comp', om.ExecComp('obj = -1.*AEP', AEP={'value': 0.0, 'units': 'kW*h'}), promotes=['*'])
 
 
 class OptCOE(om.Group):
