@@ -183,7 +183,7 @@ class OptAEP(om.Group):
 
 
         # add objective component
-        self.add_subsystem('obj_comp', om.ExecComp('obj = -1.*AEP', AEP=0.0), promotes=['*'])
+        self.add_subsystem('obj_comp', om.ExecComp('obj = -1.*AEP', AEP={'value': 0.0, 'units': 'kw*h'}), promotes=['*'])
 
 
 class OptCOE(om.Group):
