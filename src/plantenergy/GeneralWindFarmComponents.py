@@ -13,6 +13,8 @@ import openmdao.api as om
 from akima import Akima, akima_interp
 from plantenergy.utilities import hermite_spline
 
+from plantenergy import config
+
 
 def add_gen_params_IdepVarComps(openmdao_group, datasize):
     ivc = om.IndepVarComp()
@@ -275,6 +277,8 @@ class WindFarmAEP(om.ExplicitComponent):
         """
         self.options.declare('nDirections', types=int, default=1,
                              desc="Number of directions for inputs dirPowers and windFrequencies.")
+        self.options.declare('record_function_calls', default=False,
+                             desc="If true, than function calls and sensitivity function calls will be recorded at the top level")
 
     def setup(self):
         nDirections = self.options['nDirections']
@@ -301,6 +305,7 @@ class WindFarmAEP(om.ExplicitComponent):
         dirPowers = inputs['dirPowers']
         windFrequencies = inputs['windFrequencies']
         AEP_method = discrete_inputs['gen_params:AEP_method']
+        record_function_calls = self.options['record_function_calls']
 
         # number of hours in a year
         hours = 8760.0
@@ -319,7 +324,11 @@ class WindFarmAEP(om.ExplicitComponent):
             raise ValueError('AEP_method must be one of ["none", "log", "inverse"]')
         # print(AEP)
 
+        if record_function_calls:
+            config.obj_func_calls_array[self.comm.rank] += 1
+
     def compute_partials(self, inputs, partials, discrete_inputs=None):
+        record_function_calls = self.options['record_function_calls']
 
         # # print('entering AEP - provideJ')
         AEP_method = discrete_inputs['gen_params:AEP_method']
@@ -349,6 +358,8 @@ class WindFarmAEP(om.ExplicitComponent):
         else:
             raise ValueError('AEP_method must be one of ["none", "log", "inverse"]')
 
+        if record_function_calls:
+            config.sens_func_calls_array[self.comm.rank] += 1
 
 class WindDirectionPower(om.ExplicitComponent):
 

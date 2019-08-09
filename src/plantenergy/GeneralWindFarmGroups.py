@@ -235,6 +235,8 @@ class AEPGroup(om.Group):
                              desc="Number of spline control points.")
         self.options.declare('cp_curve_spline', default=None,
                              desc="Values for cp spline. When set to None (default), the component will make a spline using np.interp.")
+        self.options.declare('record_function_calls', default=False,
+                            desc="If true, than function calls and sensitiv ity function calls will be recorded at the top level")
 
     def setup(self):
         opt = self.options
@@ -250,6 +252,7 @@ class AEPGroup(om.Group):
         params_IdepVar_args = opt['params_IdepVar_args']
         cp_points = opt['cp_points']
         cp_curve_spline = opt['cp_curve_spline']
+        record_function_calls = opt['record_function_calls']
 
         if wake_model_options is None:
             wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
@@ -368,7 +371,7 @@ class AEPGroup(om.Group):
         power_mux = self.add_subsystem(name='powerMUX', subsys=om.MuxComp(vec_size=nDirections))
         power_mux.add_var('r', shape=(1, ), units=power_units)
 
-        self.add_subsystem('AEPcomp', WindFarmAEP(nDirections=nDirections), promotes=['*'])
+        self.add_subsystem('AEPcomp', WindFarmAEP(nDirections=nDirections, record_function_calls=record_function_calls), promotes=['*'])
 
         # connect components
         self.connect('windDirections', 'windDirectionsDeMUX.r')
