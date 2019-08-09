@@ -120,6 +120,9 @@ class DirectionGroup(om.Group):
                              desc="Values for cp spline. When set to None (default), the component will make a spline using np.interp.")
 
     def setup(self):
+
+        self.linear_solver = om.DirectSolver()
+
         opt = self.options
         nTurbines = opt['nTurbines']
         direction_id = opt['direction_id']
