@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 class wind_farm_plot():
 
-    def __init__(self, turb_x, turb_y, turb_diam, bound_x, bound_y):
+    def __init__(self, turb_x, turb_y, turb_diam, bound_x=np.array([0]), bound_y=np.array([0])):
 
         """
 
@@ -51,10 +51,10 @@ class wind_farm_plot():
 
         self.ax.axis('equal')
 
-        self.ax.legend()
+        self.legend = self.ax.legend(frameon=False)
         self.ax.set_xlabel(self.xlabel)
         self.ax.set_ylabel(self.ylabel)
-        self.fig.legend()
+        # self.fig.legend()
 
         return 0
 

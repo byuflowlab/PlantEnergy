@@ -1,5 +1,5 @@
 from __future__ import print_function, division, absolute_import
-import position_constraints
+# import position_constraints
 
 import matplotlib.pylab as plt
 import numpy as np
