@@ -467,6 +467,12 @@ class WindDirectionPower(om.ExplicitComponent):
                       and (wtVelocity[n] < cut_out_speed[n])):
                     # Produce the rated power
                     wtPower[n] = rated_power[n]
+                # if below cut-in-speed
+                # elif wtVelocity[n] < cut_in_speed[n] and wtVelocity[n] >= 0.:
+                #     cut_in_power = generatorEfficiency[n] * (0.5 * air_density * rotorArea[n] * Cp[n] * np.power(cut_in_speed[n], 3))
+                #     dcut_in_power_dv = (3./2.)*generatorEfficiency[n] * air_density * rotorArea[n] * Cp[n] * np.power(cut_in_speed[n], 2)
+                #     wtPower[n], _ = hermite_spline(wtVelocity[n], 0.0, cut_in_speed[n], 0.0, 0.0, cut_in_power, dcut_in_power_dv)
+                #     # wtPower[i] = 0.0
 
             # calculate total power for this direction
             dir_power = np.sum(wtPower)
@@ -502,10 +508,10 @@ class WindDirectionPower(om.ExplicitComponent):
                         wtPower[i] = rated_power[i]
 
             for i in range(0, nTurbines):
-                if wtVelocity[i] < cut_in_speed[i]:
+                if wtVelocity[i] < cut_in_speed[i] and wtVelocity[i] >= 0.0:
                     cut_in_power = generatorEfficiency[i] * (0.5 * air_density * rotorArea[i] * Cp[i] * np.power(cut_in_speed[i], 3))
                     dcut_in_power_dv = (3./2.)*generatorEfficiency[i] * air_density * rotorArea[i] * Cp[i] * np.power(cut_in_speed[i], 2)
-                    wtPower[i], _ = hermite_spline(wtVelocity[i], 0.0, cut_in_speed, 0.0, 0.0, cut_in_power, dcut_in_power_dv)
+                    wtPower[i], _ = hermite_spline(wtVelocity[i], 0.0, cut_in_speed[i], 0.0, 0.0, cut_in_power, dcut_in_power_dv)
                     # wtPower[i] = 0.0
 
             # if np.any(rated_velocity+1.) >= np.any(wtVelocity) >= np.any(rated_velocity-1.) and not \
@@ -531,6 +537,12 @@ class WindDirectionPower(om.ExplicitComponent):
             # calculate total power for this direction
             self.wtPower = wtPower
             dir_power = np.sum(wtPower)
+        for wtp in wtPower:
+            if wtp == np.nan:
+                print('wt power is NaN')
+
+        if dir_power == np.nan:
+            print('dir power is NaN')
 
         # pass out results
         outputs['wtPower%i' % direction_id] = wtPower
@@ -580,6 +592,18 @@ class WindDirectionPower(om.ExplicitComponent):
                       and (wtVelocity[n] < cut_out_speed[n])):
                     # Produce the rated power
                     dwtPower_dwtVelocity[n, n] = 0.0
+                # elif wtVelocity[n] < cut_in_speed[n] and wtVelocity[n] >= 0.0:
+                #     # dwtPower_dwtVelocity[i][i] = 0.0
+                #     # dwtPower_dCp[i][i] = 0.0
+                #     # dwtPower_drotorDiameter[i][i] = 0.0
+                #
+                #     cut_in_power = generatorEfficiency[n] * (
+                #                 0.5 * air_density * rotorArea[n] * Cp[n] * np.power(cut_in_speed[n], 3))
+                #     dcut_in_power_dv = generatorEfficiency[n] * air_density * rotorArea[n] * Cp[n] * np.power(
+                #         cut_in_speed[n], 2)
+                #     _, dwtPower_dwtVelocity[n][n] = hermite_spline(wtVelocity[n], 0.0, cut_in_speed[n], 0.0, 0.0, cut_in_power,
+                #                                                dcut_in_power_dv)
+
 
             # calculate total power for this direction
             ddir_power_dwtVelocity = np.matmul(dwtPower_dwtVelocity, np.ones(nTurbines))
@@ -652,7 +676,7 @@ class WindDirectionPower(om.ExplicitComponent):
 
             # set gradients for turbines below cut_in speed
             for i in range(0, nTurbines):
-                if wtVelocity[i] < cut_in_speed[i]:
+                if wtVelocity[i] < cut_in_speed[i] and wtVelocity[i] >= 0.0:
                     # dwtPower_dwtVelocity[i][i] = 0.0
                     # dwtPower_dCp[i][i] = 0.0
                     # dwtPower_drotorDiameter[i][i] = 0.0
@@ -661,7 +685,7 @@ class WindDirectionPower(om.ExplicitComponent):
                                 0.5 * air_density * rotorArea[i] * Cp[i] * np.power(cut_in_speed[i], 3))
                     dcut_in_power_dv = generatorEfficiency[i] * air_density * rotorArea[i] * Cp[i] * np.power(
                         cut_in_speed[i], 2)
-                    _, dwtPower_dwtVelocity[i][i] = hermite_spline(wtVelocity[i], 0.0, cut_in_speed, 0.0, 0.0, cut_in_power,
+                    _, dwtPower_dwtVelocity[i][i] = hermite_spline(wtVelocity[i], 0.0, cut_in_speed[i], 0.0, 0.0, cut_in_power,
                                                                dcut_in_power_dv)
 
                     dwtPower_dCp[i][i] = dwtPower_dwtVelocity[i][i]*(dCpdV[i]**-1)
