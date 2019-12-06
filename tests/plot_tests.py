@@ -12,11 +12,16 @@ def plot_power_curve_with_spline_on_cut_in_speed():
 
     # load cp data
     power_data = np.loadtxt('./input_files/niayifar_vestas_v80_power_curve_observed.txt', delimiter=',')
+    for i in np.arange(20, 25, .1):
+        power_data = np.append(power_data, np.array([[i, 2.0]]), axis=0)
+    power_data = np.append(power_data, np.array([[25.01, 0.0]]), axis=0)
     rotor_diameter = 80.
     air_density = 1.225
     Ar = 0.25 * np.pi * rotor_diameter ** 2
     cp_curve_cp = power_data[:, 1] * (1E6) / (0.5 * air_density * power_data[:, 0] ** 3 * Ar)
     cp_curve_v = power_data[:, 0]
+
+    print(cp_curve_cp)
 
     # define openmdao problem
     prob = om.Problem()
@@ -34,15 +39,15 @@ def plot_power_curve_with_spline_on_cut_in_speed():
 
     cutin = 4.0
     cutout = 25.
-    ratedws = 9.8
-    ratedp = 3.35E6
+    ratedws = 16.
+    ratedp = 2E6
 
     # assign values to turbine states
     prob['cut_in_speed'] = np.ones(nSpeeds) * cutin
     prob['cut_out_speed'] = np.ones(nSpeeds) * cutout
     prob['rated_power'] = np.ones(nSpeeds) * ratedp
     prob['rated_wind_speed'] = np.ones(nSpeeds) * ratedws
-    prob['use_power_curve_definition'] = False
+    prob['use_power_curve_definition'] = True
 
     # run the problem
     prob.run_model()
@@ -50,14 +55,16 @@ def plot_power_curve_with_spline_on_cut_in_speed():
     def power_curve(velocity, cutin, cutout, ratedws, ratedp):
 
         power = np.zeros_like(velocity)
-
         for i in np.arange(0, velocity.size):
             if velocity[i] > cutin and velocity[i] < ratedws:
-                power[i] = ratedp * ((velocity[i] - cutin) / (ratedws - cutin)) ** 3
+                power[i] = ratedp * ((velocity[i] ) / (ratedws - cutin)) ** 3
             elif velocity[i] > ratedws and velocity[i] < cutout:
                 power[i] = ratedp
 
-        return power
+            if power[i]>ratedp:
+                power[i]=ratedp
+
+        return power*1E-3
 
     velocities = np.linspace(0., vmax, nSpeeds)
     prob_power = np.zeros_like(velocities)
@@ -67,8 +74,9 @@ def plot_power_curve_with_spline_on_cut_in_speed():
     prob_power = prob['wtPower0']
     func_power = power_curve(velocities, cutin, cutout, ratedws, ratedp)
 
-    scaler = 1E-6
+    scaler = 1E-3
     plt.plot(velocities, prob_power*scaler, 'r')
+    # plt.plot(cp_curve_v, cp_curve_cp, 'b:')
     plt.plot(velocities, func_power*scaler, 'k--')
     plt.ylabel('MW')
     plt.xlabel('m/s')

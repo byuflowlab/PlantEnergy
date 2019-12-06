@@ -871,6 +871,8 @@ class GradientTestsGauss(unittest.TestCase):
         prob['rated_power'] = np.ones(nTurbines) * 2000.
         prob['cp_curve_cp'] = cp_curve_cp
         prob['cp_curve_wind_speed'] = cp_curve_wind_speed
+        prob['rated_wind_speed'] = 16.0*np.ones(nTurbines)
+        prob['cut_out_speed'] = 25.0*np.ones(nTurbines)
 
         prob['model_params:wake_combination_method'] = wake_combination_method
         prob['model_params:ti_calculation_method'] = ti_calculation_method
@@ -882,6 +884,7 @@ class GradientTestsGauss(unittest.TestCase):
         prob['model_params:kz'] = k_calc
         prob['model_params:print_ti'] = False
         prob['model_params:wake_model_version'] = wake_model_version
+        prob['use_power_curve_definition'] = True
         # prob['model_params:I'] = TI
         # prob['model_params:shear_exp'] = shear_exp
         if nRotorPoints > 1:

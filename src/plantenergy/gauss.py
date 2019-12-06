@@ -51,6 +51,8 @@ def add_gauss_params_IndepVarComps(openmdao_group, nRotorPoints=1):
                             desc='print TI values to a file for use in plotting etc')
     ivc.add_discrete_output('model_params:wake_model_version', val=2016,
                             desc='choose whether to use Bastankhah 2014 or 2016')
+    ivc.add_discrete_output('model_params:WECH', val=0,
+                            desc='choose whether to use WECD (0) or WECH (1) when wec_factor != 1.')
     ivc.add_discrete_output('model_params:sm_smoothing', val=700.0,
                             desc='adjust degree of smoothing for TI smooth max')
 
