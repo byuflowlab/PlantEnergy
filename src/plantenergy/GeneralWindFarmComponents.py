@@ -584,9 +584,6 @@ class WindDirectionPower(om.ExplicitComponent):
         cp_curve_wind_speed = discrete_inputs['cp_curve_wind_speed']
 
         if discrete_inputs['use_power_curve_definition']:
-            # obtain necessary inputs
-            rated_wind_speed = discrete_inputs['rated_wind_speed']
-            cut_out_speed = discrete_inputs['cut_out_speed']
 
             # obtain necessary inputs
             rated_wind_speed = discrete_inputs['rated_wind_speed']

@@ -239,12 +239,12 @@ class TotalDerivTestsFlorisAEPOptRotor(unittest.TestCase):
             np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'], self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'], self.rtol, self.atol)
 
 
-class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
+class TotalDerivTestsGaussOpt_VestasV80(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
 
-        super(TotalDerivTestsGaussAEPOpt_VestasV80, self).setUpClass()
+        super(TotalDerivTestsGaussOpt_VestasV80, self).setUpClass()
         nTurbines = 16
         nDirections = 50
         self.rtol = 1E-2
@@ -386,6 +386,7 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
         prob['air_density'] = air_density
         prob['windDirections'] = windDirections
         prob['windFrequencies'] = windFrequencies
+        prob['use_power_curve_definition'] = True
 
         # provide values for hull constraint
         prob['boundaryVertices'] = boundaryVertices
@@ -408,6 +409,8 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
         prob['cut_in_speed'] = np.ones(nTurbines) * 4.
         # prob['cut_in_speed'] = np.ones(nTurbines)*7.
         prob['rated_power'] = np.ones(nTurbines) * 2000.
+        prob['rated_wind_speed'] = np.ones(nTurbines)*16.
+        prob['cut_out_speed'] = 25.*np.ones(nTurbines)
         prob['cp_curve_cp'] = cp_curve_cp
         prob['cp_curve_wind_speed'] = cp_curve_wind_speed
 
@@ -427,7 +430,215 @@ class TotalDerivTestsGaussAEPOpt_VestasV80(unittest.TestCase):
         prob.run_model()
 
         # pass results to self for use with unit test
-        self.J = prob.check_totals(out_stream=None)
+        self.J = prob.check_totals()
+        self.nDirections = nDirections
+
+    def testObj_x_v80(self):
+        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'],
+                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'],
+                                   self.rtol, self.atol)
+
+    def testObj_y(self):
+        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fwd'],
+                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fd'],
+                                   self.rtol, self.atol)
+
+    def testObj_yaw(self):
+        for dir in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'],
+                                       self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'],
+                                       self.rtol, self.atol)
+
+
+class TotalDerivTestsGaussAEP_VestasV80(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(self):
+
+        super(TotalDerivTestsGaussAEP_VestasV80, self).setUpClass()
+        nTurbines = 16
+        nDirections = 50
+        self.rtol = 1E-2
+        self.atol = 1E5
+
+        np.random.seed(seed=10)
+
+        turbineX = np.random.rand(nTurbines)*3000.
+        turbineY = np.random.rand(nTurbines)*3000.
+
+        # generate boundary constraint
+        locations = np.zeros([nTurbines, 2])
+        for i in range(0, nTurbines):
+            locations[i] = np.array([turbineX[i], turbineY[i]])
+
+
+        # print(locations)
+        boundaryVertices, boundaryNormals = calculate_boundary(locations)
+        nVertices = len(boundaryNormals)
+
+        minSpacing = 2.
+        # minSpacing.flat()
+
+        # initialize input variable arrays
+        rotor_diameter = 126.4 #np.random.random()*150.
+        rotorDiameter = np.ones(nTurbines)*rotor_diameter
+        hubHeight = np.ones(nTurbines)*90.
+        axialInduction = np.ones(nTurbines)*1./3. #*np.random.random()*(1./3.)
+        Ct = np.ones(nTurbines)*np.random.random()
+        Cp = np.ones(nTurbines)*np.random.random()
+        generatorEfficiency = np.ones(nTurbines)*0.94 #*np.random.random()
+        yaw = np.zeros(nTurbines) # np.random.rand(nTurbines)*60. - 30.
+
+        # Define flow properties
+        windSpeeds = np.random.rand(nDirections)*20        # m/s
+        air_density = 1.1716    # kg/m^3
+        windDirections = np.random.rand(nDirections)*360.0
+        windFrequencies = np.random.rand(nDirections)
+
+        # define turbine size
+        rotor_diameter = 80.  # (m)
+        hub_height = 90.  # (m)
+
+        # define turbine locations in global reference frame
+        # original example case
+        # turbineX = np.array([1164.7, 947.2,  1682.4, 1464.9, 1982.6, 2200.1])   # m
+        # turbineY = np.array([1024.7, 1335.3, 1387.2, 1697.8, 2060.3, 1749.7])   # m
+
+        # set up problem
+        # prob = om.Problem(model=OptAEP(nTurbines, nDirections=1))
+
+        ct_curve = np.loadtxt('./input_files/mfg_ct_vestas_v80_niayifar2016.txt', delimiter=",")
+
+        # air_density = 1.1716  # kg/m^3
+        Ar = 0.25 * np.pi * rotor_diameter ** 2
+        # cp_curve_wind_speed = ct_curve[:, 0]
+        power_data = np.loadtxt('./input_files/niayifar_vestas_v80_power_curve_observed.txt', delimiter=',')
+        # cp_curve_cp = niayifar_power_model(cp_curve_wind_speed)/(0.5*air_density*cp_curve_wind_speed**3*Ar)
+        cp_curve_cp = power_data[:, 1] * (1E6) / (0.5 * air_density * power_data[:, 0] ** 3 * Ar)
+        cp_curve_wind_speed = power_data[:, 0]
+        cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const')
+        cp_curve_spline.set_smoothing_factor(.0001)
+        # cp_curve_spline = None
+        # xs = np.linspace(0, 35, 1000)
+        # plt.plot(xs, cp_curve_spline(xs))
+        # plt.scatter(cp_curve_wind_speed, cp_curve_cp)
+        # plt.show()
+        # quit()
+        nRotorPoints = 1
+
+        wake_model_options = {'nSamples': 0,
+                              'nRotorPoints': nRotorPoints,
+                              'use_ct_curve': True,
+                              'ct_curve_ct': ct_curve[:, 1],
+                              'ct_curve_wind_speed': ct_curve[:, 0],
+                              'interp_type': 1,
+                              'differentiable': True}
+
+        z_ref = 70.0
+        z_0 = 0.0002
+        # z_0 = 0.000
+        TI = 0.077
+
+        # k_calc = 0.022
+        k_calc = 0.3837 * TI + 0.003678
+
+        wake_combination_method = 1
+        ti_calculation_method = 0
+        calc_k_star = True
+        sort_turbs = True
+        wake_model_version = 2014
+        expansion_factor = 3.
+        use_parallel_group=False
+
+        prob = om.Problem(model=AEPGroup(nTurbines=nTurbines, nDirections=nDirections, wake_model=gauss_wrapper,
+                                         wake_model_options=wake_model_options, datasize=0, use_rotor_components=False,
+                                         params_IdepVar_func=add_gauss_params_IndepVarComps, differentiable=True,
+                                         params_IdepVar_args={}))
+        # print("HERE 1")
+        # set up optimizer
+        # prob.driver = om.pyOptSparseDriver()
+        # prob.driver.options['optimizer'] = 'SNOPT'
+        prob.model.add_objective('AEP', scaler=1)
+
+        # set optimizer options
+        # prob.driver.opt_settings['Verify level'] = 3
+        # prob.driver.opt_settings['Print file'] = 'SNOPT_print_exampleOptAEP.out'
+        # prob.driver.opt_settings['Summary file'] = 'SNOPT_summary_exampleOptAEP.out'
+        # prob.driver.opt_settings['Major iterations limit'] = 1
+
+        # select design variables
+        prob.model.add_design_var('turbineX', lower=np.ones(nTurbines)*min(turbineX), upper=np.ones(nTurbines)*max(turbineX), scaler=1.0)
+        prob.model.add_design_var('turbineY', lower=np.ones(nTurbines)*min(turbineY), upper=np.ones(nTurbines)*max(turbineY), scaler=1.0)
+        # prob.model.add_design_var('hubHeight', lower=np.ones(nTurbines)*0.0, upper=np.ones(nTurbines)*120., scaler=1.0)
+        for direction_id in range(0, windDirections.size):
+            prob.model.add_design_var('yaw%i' % direction_id, lower=-30.0, upper=30.0, scaler=1.0)
+
+        # add constraints
+        # prob.model.add_constraint('sc', lower=np.zeros(int(((nTurbines-1.)*nTurbines/2.))))
+        # prob.model.add_constraint('boundaryDistances', lower=np.zeros(nVertices*nTurbines), scaler=1.0)
+
+        # initialize problem
+        prob.setup()
+
+        # assign values to constant inputs (not design variables)
+        prob['turbineX'] = turbineX
+        prob['turbineY'] = turbineY
+        prob['hubHeight'] = np.zeros_like(turbineX)+90.
+        prob['yaw0'] = yaw
+        prob['rotorDiameter'] = rotorDiameter
+        prob['axialInduction'] = axialInduction
+        prob['Ct_in'] = Ct
+        prob['Cp_in'] = Cp
+        prob['generatorEfficiency'] = generatorEfficiency
+        prob['windSpeeds'] = windSpeeds
+        prob['air_density'] = air_density
+        prob['windDirections'] = windDirections
+        prob['windFrequencies'] = windFrequencies
+        prob['use_power_curve_definition'] = True
+
+        # provide values for hull constraint
+        # prob['boundaryVertices'] = boundaryVertices
+        # prob['boundaryNormals'] = boundaryNormals
+
+        # prob['AEP_method'] = 'none'
+        # prob['AEP_method'] = 'log'
+        # prob['AEP_method'] = 'inverse'
+
+        prob['rotorDiameter'] = rotorDiameter
+        prob['hubHeight'] = hubHeight
+        prob['axialInduction'] = axialInduction
+        prob['generatorEfficiency'] = generatorEfficiency
+        prob['windSpeeds'] = windSpeeds
+        prob['air_density'] = air_density
+        prob['windDirections'] = windDirections
+        prob['windFrequencies'] = windFrequencies
+        prob['Ct_in'] = Ct
+        prob['Cp_in'] = Cp
+        prob['cut_in_speed'] = np.ones(nTurbines) * 4.
+        # prob['cut_in_speed'] = np.ones(nTurbines)*7.
+        prob['rated_power'] = np.ones(nTurbines) * 2000.
+        prob['rated_wind_speed'] = np.ones(nTurbines)*16.
+        prob['cut_out_speed'] = 25.*np.ones(nTurbines)
+        prob['cp_curve_cp'] = cp_curve_cp
+        prob['cp_curve_wind_speed'] = cp_curve_wind_speed
+
+        prob['model_params:wake_combination_method'] = wake_combination_method
+        prob['model_params:ti_calculation_method'] = ti_calculation_method
+        prob['model_params:calc_k_star'] = calc_k_star
+        prob['model_params:sort'] = sort_turbs
+        prob['model_params:z_ref'] = z_ref
+        prob['model_params:z_0'] = z_0
+        prob['model_params:ky'] = k_calc
+        prob['model_params:kz'] = k_calc
+        prob['model_params:print_ti'] = False
+        prob['model_params:wake_model_version'] = wake_model_version
+        prob['model_params:wec_factor'] = expansion_factor
+
+        # run problem
+        prob.run_model()
+
+        # pass results to self for use with unit test
+        self.J = prob.check_totals()
         self.nDirections = nDirections
 
     def testObj_x_v80(self):
@@ -841,7 +1052,7 @@ class GradientTestsGauss(unittest.TestCase):
         # prob.model.add_constraint('sc', lower=np.zeros(int(((nTurbs - 1.) * nTurbs / 2.))), scaler=1.0)
 
         # tic = time.time()
-        prob.setup(check=False)
+        prob.setup(check=True)
         # toc = time.time()
 
         # print the results
