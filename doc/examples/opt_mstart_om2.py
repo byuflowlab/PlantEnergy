@@ -249,6 +249,8 @@ if __name__ == "__main__":
 
         # load performance characteristics
         cut_in_speed = 4.  # m/s
+        cut_out_speed = 25.  # m/s
+        rated_wind_speed = 16.  # m/s
         rated_power = 2000.  # kW
         generator_efficiency = 0.944
 
@@ -266,11 +268,6 @@ if __name__ == "__main__":
         cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const')
         cp_curve_spline.set_smoothing_factor(.0001)
 
-        cutin = 4.0
-        cutout = 25.
-        ratedws = 16.
-        ratedp = 2E3
-
     elif turbine_type == 'NREL5MW':
 
         # define turbine size
@@ -282,6 +279,8 @@ if __name__ == "__main__":
 
         # load performance characteristics
         cut_in_speed = 3.  # m/s
+        cut_out_speed = 25.  # m/s
+        rated_wind_speed = 11.4  # m/s
         rated_power = 5000.  # kW
         generator_efficiency = 0.944
 
@@ -599,10 +598,10 @@ if __name__ == "__main__":
     prob['rated_power'] = ratedPowers
 
     # assign values to turbine states
-    prob['cut_in_speed'] = np.ones(nTurbines) * cutin
-    prob['cut_out_speed'] = np.ones(nTurbines) * cutout
-    prob['rated_power'] = np.ones(nTurbines) * ratedp
-    prob['rated_wind_speed'] = np.ones(nTurbines) * ratedws
+    prob['cut_in_speed'] = np.ones(nTurbines) * cut_in_speed
+    prob['cut_out_speed'] = np.ones(nTurbines) * cut_out_speed
+    prob['rated_power'] = np.ones(nTurbines) * rated_power
+    prob['rated_wind_speed'] = np.ones(nTurbines) * rated_wind_speed
     prob['use_power_curve_definition'] = True
 
     # assign boundary values
