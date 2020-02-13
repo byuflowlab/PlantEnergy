@@ -266,6 +266,11 @@ if __name__ == "__main__":
         cp_curve_spline = UnivariateSpline(cp_curve_wind_speed, cp_curve_cp, ext='const')
         cp_curve_spline.set_smoothing_factor(.0001)
 
+        cutin = 4.0
+        cutout = 25.
+        ratedws = 16.
+        ratedp = 2E3
+
     elif turbine_type == 'NREL5MW':
 
         # define turbine size
@@ -593,6 +598,13 @@ if __name__ == "__main__":
     ratedPowers = np.ones(nTurbines) * rated_power
     prob['rated_power'] = ratedPowers
 
+    # assign values to turbine states
+    prob['cut_in_speed'] = np.ones(nTurbines) * cutin
+    prob['cut_out_speed'] = np.ones(nTurbines) * cutout
+    prob['rated_power'] = np.ones(nTurbines) * ratedp
+    prob['rated_wind_speed'] = np.ones(nTurbines) * ratedws
+    prob['use_power_curve_definition'] = True
+
     # assign boundary values
     prob['boundary_center'] = np.array([boundary_center_x, boundary_center_y])
     prob['boundary_radius'] = boundary_radius
@@ -633,7 +645,7 @@ if __name__ == "__main__":
 
     expansion_factor_last = 0.0
     # Jt = prob.check_totals(out_stream=None)
-    tick = time.time()
+    tict = time.time()
     if relax:
         for expansion_factor, i in zip(expansion_factors, np.arange(0, expansion_factors.size)):  # best so far
             # print("func calls: ", config.obj_func_calls_array, np.sum(config.obj_func_calls_array))
