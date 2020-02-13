@@ -98,4 +98,27 @@ def line_points(npts):
     return x, y
 
 
+def smooth_max(s, x, y):
+
+    # based on John D.Cook's writings at
+    # (1) https: // www.johndcook.com / blog / 2010 / 01 / 13 / soft - maximum /
+    # (2) https: // www.johndcook.com / blog / 2010 / 01 / 20 / how - to - compute - the - soft - maximum /
+
+    # s controls the level of smoothing used in the smooth max
+    # x and y are the values to be compared
+    # g is the result
+
+
+    # LogSumExponential Method - used this in the past (see ref 1 above)
+    # g = (x * exp(s * x) + y * exp(s * y)) / (exp(s * x) + exp(s * y))
+
+    # non - overflowing version of Smooth Max function (see ref 2 above)
+    max_val = np.max([x, y])
+    min_val = np.min([x, y])
+
+    g = (np.log(1.0 + np.exp(s * (min_val - max_val)))+s * max_val) / s
+
+    return g
+
+
 # if __name__ == '__main__':

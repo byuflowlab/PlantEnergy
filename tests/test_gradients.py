@@ -433,7 +433,7 @@ class TotalDerivTestsGaussOpt_VestasV80(unittest.TestCase):
         self.J = prob.check_totals()
         self.nDirections = nDirections
 
-    def testObj_x_v80(self):
+    def testObj_x(self):
         np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'],
                                    self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'],
                                    self.rtol, self.atol)
@@ -641,20 +641,20 @@ class TotalDerivTestsGaussAEP_VestasV80(unittest.TestCase):
         self.J = prob.check_totals()
         self.nDirections = nDirections
 
-    def testObj_x_v80(self):
-        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'],
-                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'],
+    def testObj_x(self):
+        np.testing.assert_allclose(self.J[('AEPcomp.AEP', 'desvars.turbineX')]['J_fwd'],
+                                   self.J[('AEPcomp.AEP', 'desvars.turbineX')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_y(self):
-        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fwd'],
-                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fd'],
+        np.testing.assert_allclose(self.J[('AEPcomp.AEP', 'desvars.turbineY')]['J_fwd'],
+                                   self.J[('AEPcomp.AEP', 'desvars.turbineY')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_yaw(self):
         for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'],
-                                       self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'],
+            np.testing.assert_allclose(self.J[('AEPcomp.AEP', 'y_ivc.yaw%i' % dir)]['J_fwd'],
+                                       self.J[('AEPcomp.AEP', 'y_ivc.yaw%i' % dir)]['J_fd'],
                                        self.rtol, self.atol)
 
 
@@ -665,8 +665,12 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         super(TotalDerivTestsGaussAEPOpt_NREL5MW, self).setUpClass()
         nTurbines = 16
         nDirections = 50
-        self.rtol = 1E-2
-        self.atol = 1E5
+        self.rtol = 1E-3
+        self.atol = 1E-3
+        self.atol_p = 1E-3
+        self.rtol_p = 1E-3
+        self.atol_yaw = 1E-1
+        self.rtol_yaw = 1E-1
 
         np.random.seed(seed=10)
 
@@ -830,29 +834,75 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         prob['model_params:print_ti'] = False
         prob['model_params:wake_model_version'] = wake_model_version
         prob['model_params:wec_factor'] = expansion_factor
+        prob['use_power_curve_definition'] = False
 
         # run problem
         prob.run_model()
 
+        print("objective value: ", prob['obj'])
+
         # pass results to self for use with unit test
-        self.J = prob.check_totals(out_stream=None)
+        self.J = prob.check_partials(out_stream=None)
+        self.Jt = prob.check_totals(out_stream=None)
         self.nDirections = nDirections
 
+    def testGaussGrads_wtPower_rotorDiameter(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'rotorDiameter')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'rotorDiameter')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_wtPower_Cp(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'Cp')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'Cp')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_wtPower_wtVelocity(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'wtVelocity%i'%(i))]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'wtVelocity%i'%(i))]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_dir_power_rotorDiameter(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'rotorDiameter')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'rotorDiameter')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_dir_power_Cp(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'Cp')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'Cp')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_dir_power_wtVelocity(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'wtVelocity%i'%(i))]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'wtVelocity%i'%(i))]['J_fd'],
+                self.rtol_p, self.atol_p)
+
     def testObj_x_v80(self):
-        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'],
-                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'],
+        np.testing.assert_allclose(self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fwd'],
+                                   self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineX')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_y(self):
-        np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fwd'],
-                                   self.J[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fd'],
+        np.testing.assert_allclose(self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fwd'],
+                                   self.Jt[('obj_comp.obj', 'AEPgroup.desvars.turbineY')]['J_fd'],
                                    self.rtol, self.atol)
 
     def testObj_yaw(self):
         for dir in np.arange(0, self.nDirections):
-            np.testing.assert_allclose(self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'],
-                                       self.J[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'],
-                                       self.rtol, self.atol)
+            np.testing.assert_allclose(self.Jt[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fwd'],
+                                       self.Jt[('obj_comp.obj', 'AEPgroup.y_ivc.yaw%i' % dir)]['J_fd'],
+                                       self.rtol_yaw, self.atol_yaw)
 
 
 class GradientTestsGauss(unittest.TestCase):
@@ -864,8 +914,8 @@ class GradientTestsGauss(unittest.TestCase):
         nTurbines = 6
         nDirections = 20
         self.nDirections = nDirections
-        self.rtol_p = 1E-6
-        self.atol_p = 1E-6
+        self.rtol_p = 1E-3
+        self.atol_p = 1E-3
         self.rtol_t = 1E-4
         self.atol_t = 1E-2
 
@@ -977,6 +1027,8 @@ class GradientTestsGauss(unittest.TestCase):
         windDirections = np.linspace(0, 270, size)
         windSpeeds = np.ones(size) * wind_speed
         windFrequencies = np.ones(size) / size
+
+        self.nDirections = nDirections
 
         ct_curve = np.loadtxt('./input_files/mfg_ct_vestas_v80_niayifar2016.txt', delimiter=",")
 
@@ -1098,12 +1150,6 @@ class GradientTestsGauss(unittest.TestCase):
         prob['use_power_curve_definition'] = True
         # prob['model_params:I'] = TI
         # prob['model_params:shear_exp'] = shear_exp
-        if nRotorPoints > 1:
-            if rotor_pnt_typ == 0:
-                prob['model_params:RotorPointsY'], prob['model_params:RotorPointsZ'] = circumference_points(
-                    nRotorPoints, location=location)
-            if rotor_pnt_typ == 1:
-                prob['model_params:RotorPointsY'], prob['model_params:RotorPointsZ'] = sunflower_points(nRotorPoints)
 
         # run problem
         prob.run_model()
@@ -1114,6 +1160,66 @@ class GradientTestsGauss(unittest.TestCase):
 
         # print("J = ", self.J)
         # print(self.J)
+
+    def testGaussGrads_wtPower_rotorDiameter(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'rotorDiameter')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'rotorDiameter')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_wtPower_Cp(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'Cp')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'Cp')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_wtPower_wtVelocity(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'wtVelocity%i'%(i))]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('wtPower%i'%(i), 'wtVelocity%i'%(i))]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_dir_power_rotorDiameter(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'rotorDiameter')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'rotorDiameter')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_dir_power_Cp(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'Cp')]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'Cp')]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_dir_power_wtVelocity(self):
+        for i in np.arange(0, self.nDirections):
+            np.testing.assert_allclose(
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'wtVelocity%i'%(i))]['J_fwd'],
+                self.J['AEPgroup.all_directions.direction_group%i.powerComp'%(i)][('dir_power%i'%(i), 'wtVelocity%i'%(i))]['J_fd'],
+                self.rtol_p, self.atol_p)
+
+    def testGaussGrads_obj_AEP(self):
+        np.testing.assert_allclose(
+            self.J['obj_comp'][('obj', 'AEP')]['J_fwd'],
+            self.J['obj_comp'][('obj', 'AEP')]['J_fd'],
+            self.rtol_p, self.atol_p)
+
+    def testGaussGrads_AEP_dirPowers(self):
+        np.testing.assert_allclose(
+            self.J['AEPgroup.AEPcomp'][('AEP', 'dirPowers')]['J_fwd'],
+            self.J['AEPgroup.AEPcomp'][('AEP', 'dirPowers')]['J_fd'],
+            self.rtol_p, self.atol_p)
+
+    def testGaussGrads_AEP_windFrequencies(self):
+        np.testing.assert_allclose(
+            self.J['AEPgroup.AEPcomp'][('AEP', 'windFrequencies')]['J_fwd'],
+            self.J['AEPgroup.AEPcomp'][('AEP', 'windFrequencies')]['J_fd'],
+            self.rtol_p, self.atol_p)
 
     def testGaussGrads_wtVelocity0_turbineXw(self):
         np.testing.assert_allclose(self.J['AEPgroup.all_directions.direction_group0.myModel.f_1'][('wtVelocity0', 'turbineXw')]['J_fwd'],

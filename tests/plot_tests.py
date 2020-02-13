@@ -1,6 +1,7 @@
 import numpy as np
 import openmdao.api as om
 import matplotlib.pyplot as plt
+from akima import akima_interp
 
 def plot_power_curve_with_spline_on_cut_in_speed():
 
@@ -40,7 +41,7 @@ def plot_power_curve_with_spline_on_cut_in_speed():
     cutin = 4.0
     cutout = 25.
     ratedws = 16.
-    ratedp = 2E6
+    ratedp = 2E3
 
     # assign values to turbine states
     prob['cut_in_speed'] = np.ones(nSpeeds) * cutin
@@ -64,7 +65,7 @@ def plot_power_curve_with_spline_on_cut_in_speed():
             if power[i]>ratedp:
                 power[i]=ratedp
 
-        return power*1E-3
+        return power
 
     velocities = np.linspace(0., vmax, nSpeeds)
     prob_power = np.zeros_like(velocities)
@@ -74,10 +75,15 @@ def plot_power_curve_with_spline_on_cut_in_speed():
     prob_power = prob['wtPower0']
     func_power = power_curve(velocities, cutin, cutout, ratedws, ratedp)
 
+    # data = np.loadtxt('./input_files/v80powercurve.csv', delimiter=",")
+    data = np.loadtxt('./input_files/niayifar_vestas_v80_power_curve_observed.txt', delimiter=",")
+
     scaler = 1E-3
-    plt.plot(velocities, prob_power*scaler, 'r')
+    plt.plot(velocities, prob_power*scaler, 'r', label='PlantEnergy')
     # plt.plot(cp_curve_v, cp_curve_cp, 'b:')
     plt.plot(velocities, func_power*scaler, 'k--')
+    plt.plot(data[:, 0], data[:, 1], label='Data')
+    plt.legend(frameon=False)
     plt.ylabel('MW')
     plt.xlabel('m/s')
     plt.show()

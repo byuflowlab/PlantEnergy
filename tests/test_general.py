@@ -59,12 +59,12 @@ class test_power_curve(unittest.TestCase):
         prob.setup(check=False)
 
         # set inflow velocity
-        prob['wtVelocity0'] = np.linspace(3, 30, nTurbines)
+        prob['wtVelocity0'] = np.linspace(5, 30, nTurbines)
 
         cutin = 4.0
         cutout = 25.
         ratedws = 9.8
-        ratedp = 3.35E6
+        ratedp = 3.35E3 # in MW
 
         # assign values to turbine states
         prob['cut_in_speed'] = np.ones(nTurbines) * cutin
@@ -79,11 +79,13 @@ class test_power_curve(unittest.TestCase):
         def power_curve(velocity, cutin, cutout, ratedws, ratedp):
 
             power = np.zeros_like(velocity)
-
             for i in np.arange(0, velocity.size):
                 if velocity[i] > cutin and velocity[i] < ratedws:
-                    power[i] = ratedp*((velocity[i]-cutin)/(ratedws-cutin))**3
+                    power[i] = ratedp * ((velocity[i]) / (ratedws - cutin)) ** 3
                 elif velocity[i] > ratedws and velocity[i] < cutout:
+                    power[i] = ratedp
+
+                if power[i] > ratedp:
                     power[i] = ratedp
 
             return power
