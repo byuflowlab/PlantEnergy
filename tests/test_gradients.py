@@ -834,7 +834,7 @@ class TotalDerivTestsGaussAEPOpt_NREL5MW(unittest.TestCase):
         prob['model_params:print_ti'] = False
         prob['model_params:wake_model_version'] = wake_model_version
         prob['model_params:wec_factor'] = expansion_factor
-        prob['use_power_curve_definition'] = False
+        prob['use_power_curve_definition'] = True
 
         # run problem
         prob.run_model()
