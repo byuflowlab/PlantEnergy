@@ -43,6 +43,11 @@ def plot_power_curve_with_spline_on_cut_in_speed():
     ratedws = 16.
     ratedp = 2E3
 
+    # cutin = 3.  # m/s
+    # cutout = 25.  # m/s
+    # ratedws = 11.4  # m/s
+    # ratedp = 5000.  # kW
+
     # assign values to turbine states
     prob['cut_in_speed'] = np.ones(nSpeeds) * cutin
     prob['cut_out_speed'] = np.ones(nSpeeds) * cutout
