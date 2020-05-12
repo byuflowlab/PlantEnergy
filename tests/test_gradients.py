@@ -917,7 +917,7 @@ class GradientTestsGauss(unittest.TestCase):
         self.rtol_p = 1E-3
         self.atol_p = 1E-3
         self.rtol_t = 1E-4
-        self.atol_t = 1E-2
+        self.atol_t = 1E-0
 
         # np.random.seed(seed=10)
         #
