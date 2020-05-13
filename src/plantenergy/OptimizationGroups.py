@@ -112,6 +112,8 @@ class OptAEP(om.Group):
                              desc="Values for cp spline. When set to None (default), the component will make a spline using np.interp.")
         self.options.declare('record_function_calls', default=False,
                              desc="If true, than function calls and sensitiv ity function calls will be recorded at the top level")
+        self.options.declare('runparallel', default=False,
+                             desc="If true, then groups will be executed in parallel")
 
     def setup(self):
         opt = self.options
@@ -130,6 +132,7 @@ class OptAEP(om.Group):
         cp_points = opt['cp_points']
         cp_curve_spline = opt['cp_curve_spline']
         record_function_calls = opt['record_function_calls']
+        runparallel = opt["runparallel"]
 
         if wake_model_options is None:
             wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
@@ -152,7 +155,7 @@ class OptAEP(om.Group):
                                                 params_IdepVar_func=params_IdepVar_func,
                                                 params_IdepVar_args=params_IdepVar_args, nSamples=nSamples,
                                                 cp_points=cp_points, cp_curve_spline=cp_curve_spline,
-                                                record_function_calls=record_function_calls),
+                                                record_function_calls=record_function_calls, runparallel=runparallel),
                            promotes=['*'])
 
 

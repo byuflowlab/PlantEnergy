@@ -237,6 +237,8 @@ class AEPGroup(om.Group):
                              desc="Values for cp spline. When set to None (default), the component will make a spline using np.interp.")
         self.options.declare('record_function_calls', default=False,
                             desc="If true, than function calls and sensitiv ity function calls will be recorded at the top level")
+        self.options.declare('runparallel', default=False,
+                             desc="If true, then groups will be executed in parallel")
 
     def setup(self):
         opt = self.options
@@ -253,6 +255,7 @@ class AEPGroup(om.Group):
         cp_points = opt['cp_points']
         cp_curve_spline = opt['cp_curve_spline']
         record_function_calls = opt['record_function_calls']
+        runparallel = opt['runparallel']
 
         if wake_model_options is None:
             wake_model_options = {'differentiable': differentiable, 'use_rotor_components': use_rotor_components,
@@ -317,7 +320,11 @@ class AEPGroup(om.Group):
         wind_speed_demux = self.add_subsystem(name='windSpeedsDeMUX', subsys=om.DemuxComp(vec_size=nDirections))
         wind_speed_demux.add_var('r', shape=(nDirections, ), units=wind_speed_units)
 
-        pg = self.add_subsystem('all_directions', om.ParallelGroup(), promotes=['*'])
+        if runparallel:
+            pg = self.add_subsystem('all_directions', om.ParallelGroup(), promotes=['*'])
+        else:
+            pg = self.add_subsystem('all_directions', om.Group(), promotes=['*'])
+
 
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections, dtype=int):
