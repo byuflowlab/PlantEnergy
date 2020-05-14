@@ -322,9 +322,10 @@ class AEPGroup(om.Group):
 
         if runparallel:
             pg = self.add_subsystem('all_directions', om.ParallelGroup(), promotes=['*'])
+            # raise EnvironmentError("running in parallel")
         else:
             pg = self.add_subsystem('all_directions', om.Group(), promotes=['*'])
-
+            # raise EnvironmentError("not running in parallel")
 
         if use_rotor_components:
             for direction_id in np.arange(0, nDirections, dtype=int):
