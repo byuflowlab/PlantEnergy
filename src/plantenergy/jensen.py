@@ -47,6 +47,7 @@ class jensen_wrapper(om.Group):
         try:
             wake_model_options['variant']
         except:
+            print("no wake model variant select, setting to 'TopHat'")
             wake_model_options['variant'] = 'TopHat'
 
         self.add_subsystem('jensen', Jensen(nTurbines=nTurbs, direction_id=direction_id,
